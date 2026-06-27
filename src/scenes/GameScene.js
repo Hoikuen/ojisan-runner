@@ -6,14 +6,16 @@ import {
   COLORS,
   TUNING,
   OBSTACLES,
+  CHASER,
   BEST_KEY,
 } from '../config.js';
 
 const OBSTACLE_KEYS = Object.keys(OBSTACLES);
 
-// 手動物理のエンドレスランナー。
+// 手動物理のエンドレスランナー（チェイス型）。
 // - プレイヤーはX固定。垂直は vy 変数 + 重力で手動制御（Arcade不使用＝床めり込み等の罠を回避）。
-// - 障害物は左へ流れる矩形。当たり判定は手動AABB。
+// - 障害物=誘惑は左へ流れる矩形。当たり判定は手動AABB。当たると即終了ではなく「つまずき」で
+//   追手(gap)が縮む。きれいに避けると gap が少し回復。追手に捕まる(gap<=0)と終了。
 // 状態: 'running' | 'gameover'
 export default class GameScene extends Phaser.Scene {
   constructor() {
@@ -71,6 +73,16 @@ export default class GameScene extends Phaser.Scene {
     this.obstacles = [];
     this.spawnCountdown = 480; // 最初の障害物までの距離(px)
 
+    // ── 追手（=逃げる理由）──────────────────────────────────────
+    this.gap = CHASER.gapStart; // プレイヤーより前にいる距離
+    this.invuln = 0; // つまずき後の無敵(ms)
+    this.chaser = this.add
+      .rectangle(0, FLOOR_Y, CHASER.w, CHASER.h, COLORS.chaser)
+      .setOrigin(0.5, 1)
+      .setDepth(4);
+    this.chaserEyeL = this.add.rectangle(0, 0, 8, 8, COLORS.chaserEye).setDepth(5);
+    this.chaserEyeR = this.add.rectangle(0, 0, 8, 8, COLORS.chaserEye).setDepth(5);
+
     // ── 進行 ────────────────────────────────────────────────────
     this.speed = TUNING.startSpeed;
     this.distance = 0;
@@ -82,6 +94,31 @@ export default class GameScene extends Phaser.Scene {
       .text(GAME_W - 16, 12, `ベスト ${this.best} m`, { ...hudStyle, fontSize: '16px' })
       .setOrigin(1, 0)
       .setDepth(20);
+
+    // 追手との距離ゲージ（どれだけ引き離せているか）
+    this.gaugeW = 200;
+    this.gaugeX = GAME_W / 2 - this.gaugeW / 2;
+    this.gaugeY = 24;
+    this.add
+      .text(GAME_W / 2, 8, '逃走', { fontFamily: 'sans-serif', fontSize: '11px', color: '#23303a' })
+      .setOrigin(0.5, 0)
+      .setDepth(20);
+    this.add
+      .rectangle(this.gaugeX, this.gaugeY, this.gaugeW, 12, 0x000000, 0.25)
+      .setOrigin(0, 0.5)
+      .setDepth(20);
+    this.gaugeFill = this.add
+      .rectangle(this.gaugeX, this.gaugeY, this.gaugeW, 12, COLORS.gaugeGood)
+      .setOrigin(0, 0.5)
+      .setDepth(21);
+
+    this.warnText = this.add
+      .text(GAME_W / 2, GAME_H * 0.32, '迫ってる！', {
+        fontFamily: 'sans-serif', fontSize: '30px', color: '#ff5a5a', fontStyle: 'bold',
+      })
+      .setOrigin(0.5)
+      .setDepth(22)
+      .setAlpha(0);
 
     // 操作ヒント（数秒で消える）
     this.hint = this.add
@@ -156,6 +193,50 @@ export default class GameScene extends Phaser.Scene {
     this.ducking = false;
   }
 
+  // gap を増減（上限/下限クランプ）。プラス=引き離す / マイナス=詰められる。
+  changeGap(amount) {
+    this.gap = Math.min(CHASER.gapMax, this.gap + amount);
+  }
+
+  // 障害物=誘惑に当たった＝つまずき。即終了ではなく追手に距離を詰められる。
+  stumble(o, idx) {
+    this.changeGap(-CHASER.stumblePenalty);
+    this.invuln = CHASER.iFrameMs;
+    o.hit = true;
+    o.rect.destroy();
+    this.obstacles.splice(idx, 1);
+    this.cameras.main.shake(120, 0.008);
+    this.cameras.main.flash(90, 255, 90, 90);
+  }
+
+  // 追手の見た目を gap から配置（前にいるほど画面左へ）＋接近で威圧演出
+  updateChaser(dt) {
+    const x = TUNING.playerX - this.gap;
+    this.chaser.x = x;
+    const close = this.gap < CHASER.warnGap;
+    // 近いほど少し大きく/赤く見せる
+    const t = Phaser.Math.Clamp(1 - this.gap / CHASER.gapMax, 0, 1);
+    this.chaser.scaleX = 1 + t * 0.12;
+    this.chaser.fillColor = close ? 0xc0354f : COLORS.chaser;
+    const top = this.chaser.y - CHASER.h + 22;
+    this.chaserEyeL.setPosition(x - 11, top);
+    this.chaserEyeR.setPosition(x + 11, top);
+
+    // 警告（近づくと点滅表示）
+    if (close) {
+      this.warnText.setAlpha(0.5 + 0.5 * Math.sin(this.time.now / 90));
+    } else if (this.warnText.alpha > 0) {
+      this.warnText.setAlpha(0);
+    }
+  }
+
+  updateGauge() {
+    const ratio = Phaser.Math.Clamp(this.gap / CHASER.gapMax, 0, 1);
+    this.gaugeFill.displayWidth = Math.max(1, this.gaugeW * ratio);
+    this.gaugeFill.fillColor =
+      ratio > 0.5 ? COLORS.gaugeGood : ratio > 0.28 ? COLORS.gaugeWarn : COLORS.gaugeBad;
+  }
+
   update(time, delta) {
     if (this.state !== 'running') return;
     const dt = Math.min(delta, 50) / 1000; // タブ復帰時の巨大dtを抑制
@@ -165,6 +246,11 @@ export default class GameScene extends Phaser.Scene {
     this.distance += this.speed * dt;
     const meters = Math.floor(this.distance * TUNING.metersPerPx);
     this.scoreText.setText(`${meters} m`);
+
+    // 追手の接近：常時 + 距離に比例して加速（＝最終的にはミスなしでも捕まる）
+    const gainRate = CHASER.baseGain + meters * CHASER.gainPerMeter;
+    this.changeGap(-gainRate * dt);
+    if (this.invuln > 0) this.invuln -= delta; // つまずき無敵の減衰
 
     // プレイヤー垂直物理
     this.vy += TUNING.gravity * dt;
@@ -181,7 +267,13 @@ export default class GameScene extends Phaser.Scene {
     const targetH = this.ducking && this.onGround ? TUNING.duckH : TUNING.standH;
     this.curH = targetH;
     this.player.displayHeight = targetH; // origin(0.5,1) で足元固定のまま縮む
-    this.player.fillColor = targetH === TUNING.duckH ? COLORS.playerDuck : COLORS.player;
+    const hurt = this.invuln > 0;
+    this.player.fillColor = hurt
+      ? COLORS.playerHurt
+      : targetH === TUNING.duckH
+        ? COLORS.playerDuck
+        : COLORS.player;
+    this.player.setAlpha(hurt && Math.floor(this.time.now / 80) % 2 === 0 ? 0.45 : 1);
     // 目を前方上部に追従
     this.eye.x = this.player.x + TUNING.playerW / 2 - 9;
     this.eye.y = this.player.y - this.curH + 12;
@@ -219,14 +311,21 @@ export default class GameScene extends Phaser.Scene {
       // 当たり判定（手動AABB）
       const oLeft = o.x - o.w / 2;
       const oRight = o.x + o.w / 2;
-      if (
-        pRight > oLeft &&
-        pLeft < oRight &&
-        pBottom > o.top &&
-        pTop < o.bottom
-      ) {
-        this.gameOver(meters);
-        return;
+      const overlap =
+        pRight > oLeft && pLeft < oRight && pBottom > o.top && pTop < o.bottom;
+
+      if (overlap && !o.hit) {
+        if (this.invuln <= 0) {
+          this.stumble(o, i); // 即終了ではなく追手に詰められる
+          continue; // o は破棄済み
+        }
+        o.hit = true; // 無敵中の接触はノーカウント
+      }
+
+      // きれいに避けて通過 → gap 回復
+      if (!o.hit && !o.counted && o.x < TUNING.playerX - o.w / 2 - 6) {
+        o.counted = true;
+        this.changeGap(CHASER.passReward);
       }
 
       // 画面外で破棄
@@ -234,6 +333,13 @@ export default class GameScene extends Phaser.Scene {
         o.rect.destroy();
         this.obstacles.splice(i, 1);
       }
+    }
+
+    // 追手の見た目・ゲージ更新 → 捕まったら終了
+    this.updateChaser(dt);
+    this.updateGauge();
+    if (this.gap <= CHASER.caughtGap) {
+      this.gameOver(meters);
     }
   }
 
@@ -268,6 +374,8 @@ export default class GameScene extends Phaser.Scene {
   gameOver(meters) {
     this.state = 'gameover';
     this.hideHint();
+    this.warnText.setAlpha(0);
+    this.player.setAlpha(1);
     this.cameras.main.shake(180, 0.012);
     this.cameras.main.flash(120, 255, 120, 120);
 

@@ -4,8 +4,11 @@
     <meta charset="UTF-8" />
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
     />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="theme-color" content="#bfe3ff" />
     <title>おじさんランナー</title>
     <style>
       html,
@@ -15,21 +18,81 @@
         height: 100%;
         background: #1a1d24;
         overflow: hidden;
+        overscroll-behavior: none;
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+        -webkit-touch-callout: none;
       }
+      /* iOSのアドレスバーで高さがズレないよう fixed で全画面を埋める */
       #game {
-        width: 100vw;
-        height: 100vh;
+        position: fixed;
+        inset: 0;
         display: flex;
         align-items: center;
         justify-content: center;
       }
       canvas {
-        touch-action: none; /* スワイプでスクロールさせない */
+        touch-action: none; /* スワイプでスクロール/拡大させない */
+        display: block;
+      }
+      /* 縦持ちのスマホには「横向きにして」の案内を出す（横向きランナーなので） */
+      #rotate {
+        position: fixed;
+        inset: 0;
+        z-index: 10;
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        padding: 24px;
+        box-sizing: border-box;
+        text-align: center;
+        background: #1a1d24;
+        color: #eef2f6;
+        font-family: sans-serif;
+      }
+      #rotate .ico {
+        font-size: 56px;
+        animation: tilt 1.4s ease-in-out infinite;
+      }
+      #rotate .t1 {
+        font-size: 20px;
+        font-weight: bold;
+      }
+      #rotate .t2 {
+        font-size: 14px;
+        color: #9fb3c4;
+      }
+      @keyframes tilt {
+        0%, 100% { transform: rotate(-12deg); }
+        50% { transform: rotate(78deg); }
       }
     </style>
   </head>
   <body>
     <div id="game"></div>
+    <div id="rotate">
+      <div class="ico">📱</div>
+      <div class="t1">横向きにしてね</div>
+      <div class="t2">おじさんランナーは横画面でプレイします</div>
+    </div>
+    <script>
+      // タッチ端末を縦に持っている時だけ「横向きにして」を出す（横画面ランナーのため）。
+      // pointer:coarse のメディアクエリより端末判定が確実。
+      (function () {
+        var el = document.getElementById('rotate');
+        var touch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+        function update() {
+          var portrait = window.innerHeight > window.innerWidth;
+          el.style.display = touch && portrait ? 'flex' : 'none';
+        }
+        update();
+        window.addEventListener('resize', update);
+        window.addEventListener('orientationchange', update);
+      })();
+    </script>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

@@ -9,11 +9,14 @@ import {
   ITEMS,
   ITEM_SPAWN,
   CHASER,
+  FLAVOR,
   BEST_KEY,
 } from '../config.js';
 
 const OBSTACLE_KEYS = Object.keys(OBSTACLES);
 const ITEM_KEYS = Object.keys(ITEMS);
+const pick = (arr) => arr[(Math.random() * arr.length) | 0];
+const hexColor = (n) => '#' + n.toString(16).padStart(6, '0');
 
 // 手動物理のエンドレスランナー（チェイス型）。
 // - プレイヤーはX固定。垂直は vy 変数 + 重力で手動制御（Arcade不使用＝床めり込み等の罠を回避）。
@@ -73,7 +76,9 @@ export default class GameScene extends Phaser.Scene {
     this.ducking = false;
     this.curH = TUNING.standH;
     this.landSquash = 0; // 着地スクワッシュの残り秒
-    this.particles = []; // 着地ダスト/取得スパークル（dt駆動）
+    this.particles = []; // 着地ダスト/取得スパークル/汗（dt駆動）
+    this.floatTexts = []; // 取得時の吹き出し（dt駆動）
+    this.sweatTimer = 0.4; // 必死の汗のインターバル
 
     // ── 障害物 ──────────────────────────────────────────────────
     this.obstacles = [];
@@ -131,6 +136,15 @@ export default class GameScene extends Phaser.Scene {
       .setDepth(22)
       .setAlpha(0);
 
+    // 導入の煽り（コメディ味付け・ランダム）
+    this.introText = this.add
+      .text(GAME_W / 2, GAME_H / 2 - 96, pick(FLAVOR.intro), {
+        fontFamily: 'sans-serif', fontSize: '26px', color: '#c0354f', fontStyle: 'bold',
+      })
+      .setOrigin(0.5)
+      .setDepth(20);
+    this.tweens.add({ targets: this.introText, alpha: 0, delay: 3600, duration: 900 });
+
     // 操作ヒント（数秒で消える）
     this.hint = this.add
       .text(GAME_W / 2, GAME_H / 2 - 40, 'タップ／クリック：ジャンプ\n画面下を長押し（または↓）：伏せる', {
@@ -182,9 +196,11 @@ export default class GameScene extends Phaser.Scene {
   }
 
   hideHint() {
-    if (this.hint && this.hint.alpha > 0) {
-      this.tweens.killTweensOf(this.hint);
-      this.hint.setAlpha(0);
+    for (const t of [this.hint, this.introText]) {
+      if (t && t.alpha > 0) {
+        this.tweens.killTweensOf(t);
+        t.setAlpha(0);
+      }
     }
   }
 
@@ -323,6 +339,28 @@ export default class GameScene extends Phaser.Scene {
     }
   }
 
+  // 取得時の吹き出し（tweenでなくdt駆動。上に浮いて消える）
+  spawnFloatText(x, y, str, colorHex) {
+    const tx = this.add
+      .text(x, y, str, { fontFamily: 'sans-serif', fontSize: '18px', color: colorHex, fontStyle: 'bold' })
+      .setOrigin(0.5)
+      .setDepth(7);
+    this.floatTexts.push({ t: tx, life: 0, ttl: 0.8, vy: -55 });
+  }
+
+  updateFloatTexts(dt) {
+    for (let i = this.floatTexts.length - 1; i >= 0; i--) {
+      const f = this.floatTexts[i];
+      f.life += dt;
+      f.t.y += f.vy * dt;
+      f.t.alpha = Math.max(0, 1 - f.life / f.ttl);
+      if (f.life >= f.ttl) {
+        f.t.destroy();
+        this.floatTexts.splice(i, 1);
+      }
+    }
+  }
+
   spawnItem(meters) {
     const def = ITEMS[ITEM_KEYS[(Math.random() * ITEM_KEYS.length) | 0]];
     const x = GAME_W + 50;
@@ -339,10 +377,12 @@ export default class GameScene extends Phaser.Scene {
     if (def.kind === 'gap') {
       this.changeGap(def.gap);
       this.sfxPickup();
+      this.spawnFloatText(it.x, it.y - 16, pick(FLAVOR.pickupGap), hexColor(def.color));
     } else {
       this.invuln = def.ms; // ヘルシー無敵：誘惑を素通り
       this.invulnIsPower = true;
       this.sfxPower();
+      this.spawnFloatText(it.x, it.y - 16, pick(FLAVOR.pickupPower), hexColor(COLORS.playerPower));
     }
     this.spawnParticles(it.x, it.y, def.color, 8, true);
     it.rect.destroy();
@@ -403,6 +443,14 @@ export default class GameScene extends Phaser.Scene {
     // 目を前方上部に追従
     this.eye.x = this.player.x + TUNING.playerW / 2 - 9;
     this.eye.y = this.player.y - this.curH + 12;
+    // 必死度：追手が近いほど目を見開き、汗を多く飛ばす
+    const panic = this.gap < CHASER.warnGap;
+    this.eye.setScale(panic ? 1.7 : 1);
+    this.sweatTimer -= dt;
+    if (this.sweatTimer <= 0) {
+      this.spawnParticles(this.player.x - 8, this.player.y - this.curH + 6, COLORS.sweat, 1, true);
+      this.sweatTimer = panic ? 0.1 + Math.random() * 0.08 : 0.55 + Math.random() * 0.4;
+    }
 
     // 背景スクロール
     for (const c of this.clouds) {
@@ -489,6 +537,7 @@ export default class GameScene extends Phaser.Scene {
     }
 
     this.updateParticles(dt);
+    this.updateFloatTexts(dt);
 
     // 追手の見た目・ゲージ更新 → 捕まったら終了
     this.updateChaser(dt);
@@ -544,26 +593,35 @@ export default class GameScene extends Phaser.Scene {
     // オーバーレイ
     const ov = this.add.rectangle(GAME_W / 2, GAME_H / 2, GAME_W, GAME_H, 0x000000, 0.45).setDepth(30);
     const isNewBest = meters >= this.best && meters > 0;
+    // コメディ台詞（距離で寄せる）
+    const pool = meters >= FLAVOR.caughtFarMeters ? FLAVOR.caughtFar : FLAVOR.caught;
+    const flavorLine = pick(pool);
     this.add
-      .text(GAME_W / 2, GAME_H / 2 - 70, 'つかまった！', {
+      .text(GAME_W / 2, GAME_H / 2 - 86, 'つかまった！', {
         fontFamily: 'sans-serif', fontSize: '40px', color: '#ffffff', fontStyle: 'bold',
       })
       .setOrigin(0.5)
       .setDepth(31);
     this.add
-      .text(GAME_W / 2, GAME_H / 2 - 14, `距離 ${meters} m${isNewBest ? '  🎉ベスト更新!' : ''}`, {
+      .text(GAME_W / 2, GAME_H / 2 - 44, `「${flavorLine}」`, {
+        fontFamily: 'sans-serif', fontSize: '20px', color: '#ffd9a0',
+      })
+      .setOrigin(0.5)
+      .setDepth(31);
+    this.add
+      .text(GAME_W / 2, GAME_H / 2 - 2, `距離 ${meters} m${isNewBest ? '  🎉ベスト更新!' : ''}`, {
         fontFamily: 'sans-serif', fontSize: '24px', color: '#ffe9a8',
       })
       .setOrigin(0.5)
       .setDepth(31);
     this.add
-      .text(GAME_W / 2, GAME_H / 2 + 22, `ベスト ${this.best} m`, {
+      .text(GAME_W / 2, GAME_H / 2 + 32, `ベスト ${this.best} m`, {
         fontFamily: 'sans-serif', fontSize: '18px', color: '#ffffff',
       })
       .setOrigin(0.5)
       .setDepth(31);
     this.add
-      .text(GAME_W / 2, GAME_H / 2 + 70, 'タップ／スペースでリトライ', {
+      .text(GAME_W / 2, GAME_H / 2 + 74, 'タップ／スペースでリトライ', {
         fontFamily: 'sans-serif', fontSize: '20px', color: '#bfe3ff',
       })
       .setOrigin(0.5)

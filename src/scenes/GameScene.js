@@ -6,11 +6,14 @@ import {
   COLORS,
   TUNING,
   OBSTACLES,
+  ITEMS,
+  ITEM_SPAWN,
   CHASER,
   BEST_KEY,
 } from '../config.js';
 
 const OBSTACLE_KEYS = Object.keys(OBSTACLES);
+const ITEM_KEYS = Object.keys(ITEMS);
 
 // 手動物理のエンドレスランナー（チェイス型）。
 // - プレイヤーはX固定。垂直は vy 変数 + 重力で手動制御（Arcade不使用＝床めり込み等の罠を回避）。
@@ -66,16 +69,24 @@ export default class GameScene extends Phaser.Scene {
 
     this.vy = 0;
     this.onGround = true;
+    this.prevOnGround = true;
     this.ducking = false;
     this.curH = TUNING.standH;
+    this.landSquash = 0; // 着地スクワッシュの残り秒
+    this.particles = []; // 着地ダスト/取得スパークル（dt駆動）
 
     // ── 障害物 ──────────────────────────────────────────────────
     this.obstacles = [];
     this.spawnCountdown = 480; // 最初の障害物までの距離(px)
 
+    // ── ヘルシーアイテム ────────────────────────────────────────
+    this.items = [];
+    this.itemSpawnCountdown = ITEM_SPAWN.startCountdown;
+
     // ── 追手（=逃げる理由）──────────────────────────────────────
     this.gap = CHASER.gapStart; // プレイヤーより前にいる距離
-    this.invuln = 0; // つまずき後の無敵(ms)
+    this.invuln = 0; // 無敵の残り(ms)。つまずき後 or ヘルシー無敵で共有
+    this.invulnIsPower = false; // true=ヘルシー無敵 / false=つまずき無敵
     this.chaser = this.add
       .rectangle(0, FLOOR_Y, CHASER.w, CHASER.h, COLORS.chaser)
       .setOrigin(0.5, 1)
@@ -140,6 +151,7 @@ export default class GameScene extends Phaser.Scene {
   setupInput() {
     // ポインタ：画面下 1/3 は「伏せる」ゾーン、それ以外は「ジャンプ」
     this.input.on('pointerdown', (p) => {
+      this.initAudio(); // 初回ジェスチャでオーディオ解禁
       if (this.state === 'gameover') {
         this.restartGame();
         return;
@@ -153,6 +165,7 @@ export default class GameScene extends Phaser.Scene {
     // キーボード
     const kb = this.input.keyboard;
     if (kb) {
+      kb.on('keydown', () => this.initAudio());
       kb.on('keydown-SPACE', () => this.onActionKey());
       kb.on('keydown-UP', () => this.onActionKey());
       kb.on('keydown-W', () => this.onActionKey());
@@ -181,6 +194,7 @@ export default class GameScene extends Phaser.Scene {
     this.onGround = false;
     this.ducking = false;
     this.hideHint();
+    this.sfxJump();
   }
 
   startDuck() {
@@ -202,11 +216,13 @@ export default class GameScene extends Phaser.Scene {
   stumble(o, idx) {
     this.changeGap(-CHASER.stumblePenalty);
     this.invuln = CHASER.iFrameMs;
+    this.invulnIsPower = false;
     o.hit = true;
     o.rect.destroy();
     this.obstacles.splice(idx, 1);
     this.cameras.main.shake(120, 0.008);
     this.cameras.main.flash(90, 255, 90, 90);
+    this.sfxStumble();
   }
 
   // 追手の見た目を gap から配置（前にいるほど画面左へ）＋接近で威圧演出
@@ -237,6 +253,101 @@ export default class GameScene extends Phaser.Scene {
       ratio > 0.5 ? COLORS.gaugeGood : ratio > 0.28 ? COLORS.gaugeWarn : COLORS.gaugeBad;
   }
 
+  // ── オーディオ（アセット不要のWebAudio合成SFX）──────────────────
+  initAudio() {
+    if (this.audioCtx) {
+      if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
+      return;
+    }
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      this.audioCtx = Ctx ? new Ctx() : null;
+    } catch (e) {
+      this.audioCtx = null;
+    }
+  }
+
+  beep(freq, freqEnd, dur, type = 'square', vol = 0.14) {
+    const ctx = this.audioCtx;
+    if (!ctx) return; // 未解禁（ユーザー操作前）なら無音
+    if (ctx.state === 'suspended') ctx.resume();
+    const t0 = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, t0);
+    if (freqEnd) osc.frequency.exponentialRampToValueAtTime(Math.max(1, freqEnd), t0 + dur);
+    gain.gain.setValueAtTime(vol, t0);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.02);
+  }
+
+  sfxJump() { this.beep(300, 560, 0.10, 'square', 0.11); }
+  sfxStumble() { this.beep(190, 70, 0.20, 'sawtooth', 0.18); }
+  sfxPickup() { this.beep(680, 1020, 0.09, 'sine', 0.14); }
+  sfxPower() { this.beep(440, 880, 0.16, 'triangle', 0.14); }
+  sfxCaught() { this.beep(320, 90, 0.42, 'square', 0.2); }
+
+  // ── パーティクル（dt駆動。tweenを使わず game.step でも正しく動く）──
+  spawnParticles(x, y, color, count, upward) {
+    for (let i = 0; i < count; i++) {
+      const r = this.add.rectangle(x, y, 5, 5, color).setDepth(6);
+      const ang = upward
+        ? -Math.PI / 2 + (Math.random() - 0.5) * 1.8
+        : -Math.random() * Math.PI; // 上半分へ
+      const spd = 60 + Math.random() * 130;
+      this.particles.push({
+        rect: r,
+        vx: Math.cos(ang) * spd,
+        vy: Math.sin(ang) * spd,
+        life: 0,
+        ttl: 0.28 + Math.random() * 0.25,
+      });
+    }
+  }
+
+  updateParticles(dt) {
+    for (let i = this.particles.length - 1; i >= 0; i--) {
+      const p = this.particles[i];
+      p.life += dt;
+      p.vy += 620 * dt; // 重力
+      p.rect.x += p.vx * dt;
+      p.rect.y += p.vy * dt;
+      p.rect.alpha = Math.max(0, 1 - p.life / p.ttl);
+      if (p.life >= p.ttl) {
+        p.rect.destroy();
+        this.particles.splice(i, 1);
+      }
+    }
+  }
+
+  spawnItem(meters) {
+    const def = ITEMS[ITEM_KEYS[(Math.random() * ITEM_KEYS.length) | 0]];
+    const x = GAME_W + 50;
+    const float = Math.random() < ITEM_SPAWN.floatChance;
+    const cy = float
+      ? FLOOR_Y - (ITEM_SPAWN.floatYMin + Math.random() * (ITEM_SPAWN.floatYMax - ITEM_SPAWN.floatYMin))
+      : FLOOR_Y - def.h / 2 - 4;
+    const rect = this.add.rectangle(x, cy, def.w, def.h, def.color).setDepth(4);
+    this.items.push({ x, y: cy, w: def.w, h: def.h, def, rect });
+  }
+
+  collectItem(it) {
+    const def = it.def;
+    if (def.kind === 'gap') {
+      this.changeGap(def.gap);
+      this.sfxPickup();
+    } else {
+      this.invuln = def.ms; // ヘルシー無敵：誘惑を素通り
+      this.invulnIsPower = true;
+      this.sfxPower();
+    }
+    this.spawnParticles(it.x, it.y, def.color, 8, true);
+    it.rect.destroy();
+  }
+
   update(time, delta) {
     if (this.state !== 'running') return;
     const dt = Math.min(delta, 50) / 1000; // タブ復帰時の巨大dtを抑制
@@ -250,7 +361,8 @@ export default class GameScene extends Phaser.Scene {
     // 追手の接近：常時 + 距離に比例して加速（＝最終的にはミスなしでも捕まる）
     const gainRate = CHASER.baseGain + meters * CHASER.gainPerMeter;
     this.changeGap(-gainRate * dt);
-    if (this.invuln > 0) this.invuln -= delta; // つまずき無敵の減衰
+    if (this.invuln > 0) this.invuln -= delta; // 無敵の減衰
+    if (this.invuln <= 0) this.invulnIsPower = false;
 
     // プレイヤー垂直物理
     this.vy += TUNING.gravity * dt;
@@ -262,18 +374,32 @@ export default class GameScene extends Phaser.Scene {
     } else {
       this.onGround = false;
     }
+    // 着地した瞬間：砂ぼこり＋スクワッシュ
+    if (this.onGround && !this.prevOnGround) {
+      this.landSquash = 0.16;
+      this.spawnParticles(this.player.x, FLOOR_Y - 2, COLORS.dust, 5, false);
+    }
+    this.prevOnGround = this.onGround;
+    if (this.landSquash > 0) this.landSquash -= dt;
 
     // 伏せ（地上のみ有効。空中は立ち姿で当たり判定フル）
     const targetH = this.ducking && this.onGround ? TUNING.duckH : TUNING.standH;
     this.curH = targetH;
-    this.player.displayHeight = targetH; // origin(0.5,1) で足元固定のまま縮む
-    const hurt = this.invuln > 0;
-    this.player.fillColor = hurt
-      ? COLORS.playerHurt
-      : targetH === TUNING.duckH
-        ? COLORS.playerDuck
-        : COLORS.player;
-    this.player.setAlpha(hurt && Math.floor(this.time.now / 80) % 2 === 0 ? 0.45 : 1);
+    this.player.displayHeight = targetH; // origin(0.5,1) で足元固定のまま縮む（scaleY）
+    // 着地スクワッシュ（scaleXはduck/displayHeightと干渉しない）
+    const sq = this.landSquash > 0 ? Math.max(0, this.landSquash) / 0.16 : 0;
+    this.player.scaleX = 1 + 0.28 * sq;
+    // 無敵中の見た目：ヘルシー=シアン点滅 / つまずき=赤点滅
+    const inv = this.invuln > 0;
+    const powered = inv && this.invulnIsPower;
+    this.player.fillColor = powered
+      ? COLORS.playerPower
+      : inv
+        ? COLORS.playerHurt
+        : targetH === TUNING.duckH
+          ? COLORS.playerDuck
+          : COLORS.player;
+    this.player.setAlpha(inv && Math.floor(this.time.now / 80) % 2 === 0 ? (powered ? 0.7 : 0.45) : 1);
     // 目を前方上部に追従
     this.eye.x = this.player.x + TUNING.playerW / 2 - 9;
     this.eye.y = this.player.y - this.curH + 12;
@@ -295,6 +421,13 @@ export default class GameScene extends Phaser.Scene {
       // 次までの間隔：速いほど広げて理不尽防止（反応時間を確保）
       const minGap = Math.max(270, this.speed * 0.82);
       this.spawnCountdown = minGap + Math.random() * 300;
+    }
+
+    // ヘルシーアイテムのスポーン（障害物とは別カデンツ）
+    this.itemSpawnCountdown -= this.speed * dt;
+    if (this.itemSpawnCountdown <= 0) {
+      if (meters >= ITEM_SPAWN.startAfterMeters) this.spawnItem(meters);
+      this.itemSpawnCountdown = ITEM_SPAWN.minGap + Math.random() * ITEM_SPAWN.randGap;
     }
 
     // 障害物移動＆当たり判定
@@ -334,6 +467,28 @@ export default class GameScene extends Phaser.Scene {
         this.obstacles.splice(i, 1);
       }
     }
+
+    // ヘルシーアイテム移動＆取得（プレイヤーAABBは上で算出済み）
+    for (let i = this.items.length - 1; i >= 0; i--) {
+      const it = this.items[i];
+      it.x -= this.speed * dt;
+      it.rect.x = it.x;
+      const iL = it.x - it.w / 2;
+      const iR = it.x + it.w / 2;
+      const iT = it.y - it.h / 2;
+      const iB = it.y + it.h / 2;
+      if (pRight > iL && pLeft < iR && pBottom > iT && pTop < iB) {
+        this.collectItem(it);
+        this.items.splice(i, 1);
+        continue;
+      }
+      if (it.x < -60) {
+        it.rect.destroy();
+        this.items.splice(i, 1);
+      }
+    }
+
+    this.updateParticles(dt);
 
     // 追手の見た目・ゲージ更新 → 捕まったら終了
     this.updateChaser(dt);
@@ -376,8 +531,10 @@ export default class GameScene extends Phaser.Scene {
     this.hideHint();
     this.warnText.setAlpha(0);
     this.player.setAlpha(1);
+    this.player.scaleX = 1;
     this.cameras.main.shake(180, 0.012);
     this.cameras.main.flash(120, 255, 120, 120);
+    this.sfxCaught();
 
     if (meters > this.best) {
       this.best = meters;

@@ -18,6 +18,8 @@ export const COLORS = {
   player: 0xf2a23c, // おじさん＝オレンジの四角
   playerDuck: 0xe08a22,
   playerHurt: 0xff5555, // 被弾（つまずき）時の点滅色
+  playerPower: 0x37d0c4, // 無敵（ヘルシー）時の色
+  dust: 0xcdb48a, // 着地の砂ぼこり
   chaser: 0x7a2b4a, // 追手＝迫る健康診断/メタボ判定（プレースホルダー）
   chaserEye: 0xffe27a,
   gaugeGood: 0x4caf50,
@@ -72,6 +74,26 @@ export const OBSTACLES = {
   // clearance=床から障害物の下端までの隙間。duckH(32) < clearance(40) < standH(62) で
   // 「立つと当たる／伏せると通れる」を保証。
   vending: { label: '自販機の看板', w: 60, h: 30, color: 0x4b78e2, clearance: 40 },
+};
+
+// ヘルシーアイテム（=逃げる助け）。誘惑の逆。拾うと効果。
+// kind:'gap' = 追手を引き離す(gap回復) / kind:'power' = 一定時間無敵(誘惑を素通り)。
+export const ITEMS = {
+  veggie: { label: '野菜', w: 30, h: 30, color: 0x5cb85c, kind: 'gap', gap: 30 },
+  water: { label: '水', w: 26, h: 34, color: 0x39a8e6, kind: 'gap', gap: 22 },
+  aojiru: { label: '青汁', w: 28, h: 36, color: 0x2e8b3d, kind: 'power', ms: 2200 },
+  dumbbell: { label: 'ダンベル', w: 44, h: 18, color: 0x9aa0a6, kind: 'power', ms: 2600 },
+};
+
+// アイテム出現。障害物とは別カデンツ（少し稀）。floatChance=空中(ジャンプで取る)割合。
+export const ITEM_SPAWN = {
+  startCountdown: 760, // 最初のアイテムまでの距離(px)
+  minGap: 540,
+  randGap: 720,
+  startAfterMeters: 60, // 序盤は出さない
+  floatChance: 0.45,
+  floatYMin: 70, // 床からの高さ(px)
+  floatYMax: 150, // ジャンプ頂点(約216px)で届く範囲に収める
 };
 
 export const BEST_KEY = 'ojisanRunner.best';

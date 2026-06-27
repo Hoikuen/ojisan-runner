@@ -158,6 +158,14 @@ export default class GameScene extends Phaser.Scene {
       .setDepth(20);
     this.tweens.add({ targets: this.hint, alpha: 0, delay: 3200, duration: 800 });
 
+    // BGM スケジューラ状態
+    this.bgmMasterGain = null;
+    this.bgmPlaying = false;
+    this.bgmMelStep = 0;
+    this.bgmBasStep = 0;
+    this.bgmNextMel = 0;
+    this.bgmNextBas = 0;
+
     // ── 入力 ────────────────────────────────────────────────────
     this.setupInput();
   }
@@ -273,6 +281,7 @@ export default class GameScene extends Phaser.Scene {
   initAudio() {
     if (this.audioCtx) {
       if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
+      if (!this.bgmPlaying) this.startBgm();
       return;
     }
     try {
@@ -281,6 +290,7 @@ export default class GameScene extends Phaser.Scene {
     } catch (e) {
       this.audioCtx = null;
     }
+    this.startBgm();
   }
 
   beep(freq, freqEnd, dur, type = 'square', vol = 0.14) {
@@ -305,6 +315,86 @@ export default class GameScene extends Phaser.Scene {
   sfxPickup() { this.beep(680, 1020, 0.09, 'sine', 0.14); }
   sfxPower() { this.beep(440, 880, 0.16, 'triangle', 0.14); }
   sfxCaught() { this.beep(320, 90, 0.42, 'square', 0.2); }
+
+  // ── BGM（ルックアヘッドスケジューラ。update()から毎フレーム呼ぶ）─────────
+  // メロディ [周波数Hz, 拍数] のシーケンス（ループ）
+  static BGM_MELODY = [
+    [659, 0.5], [523, 0.5], [659, 0.5], [784, 0.5], // E5 C5 E5 G5
+    [880, 1.0],             [784, 0.5], [659, 0.5], // A5(長) G5 E5
+    [587, 0.5], [659, 0.5], [523, 0.5], [440, 0.5], // D5 E5 C5 A4
+    [523, 2.0],                                       // C5(長)
+  ];
+  // ベースライン [周波数Hz, 拍数]
+  static BGM_BASS = [
+    [130, 1.0], [196, 1.0], // C3 G3
+    [130, 1.0], [175, 1.0], // C3 F3
+    [146, 1.0], [196, 1.0], // D3 G3
+    [130, 2.0],             // C3(長)
+  ];
+
+  startBgm() {
+    const ctx = this.audioCtx;
+    if (!ctx || this.bgmPlaying) return;
+    this.bgmMasterGain = ctx.createGain();
+    this.bgmMasterGain.gain.setValueAtTime(0.07, ctx.currentTime);
+    this.bgmMasterGain.connect(ctx.destination);
+    this.bgmPlaying = true;
+    this.bgmMelStep = 0;
+    this.bgmBasStep = 0;
+    this.bgmNextMel = ctx.currentTime;
+    this.bgmNextBas = ctx.currentTime;
+  }
+
+  stopBgm() {
+    if (!this.bgmPlaying || !this.bgmMasterGain) return;
+    this.bgmPlaying = false;
+    const ctx = this.audioCtx;
+    if (!ctx) return;
+    const g = this.bgmMasterGain;
+    g.gain.setValueAtTime(g.gain.value, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.5);
+  }
+
+  bgmNote(freq, startTime, dur, type, vol) {
+    const ctx = this.audioCtx;
+    if (!ctx || !this.bgmMasterGain) return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, startTime);
+    gain.gain.setValueAtTime(vol, startTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + dur);
+    osc.connect(gain).connect(this.bgmMasterGain);
+    osc.start(startTime);
+    osc.stop(startTime + dur + 0.01);
+  }
+
+  scheduleBgmNotes() {
+    const ctx = this.audioCtx;
+    if (!ctx || !this.bgmPlaying || !this.bgmMasterGain) return;
+    // 追手が近いとテンポ上昇（パニックモード）
+    const panic = this.gap < CHASER.warnGap;
+    const bps = (panic ? 200 : 170) / 60;
+    const LOOK = 0.15;
+    const now = ctx.currentTime;
+    const mel = GameScene.BGM_MELODY;
+    const bas = GameScene.BGM_BASS;
+
+    while (this.bgmNextMel < now + LOOK) {
+      const [freq, beats] = mel[this.bgmMelStep % mel.length];
+      const dur = beats / bps;
+      if (freq > 0) this.bgmNote(freq, this.bgmNextMel, dur * 0.8, 'square', 0.06);
+      this.bgmNextMel += dur;
+      this.bgmMelStep++;
+    }
+    while (this.bgmNextBas < now + LOOK) {
+      const [freq, beats] = bas[this.bgmBasStep % bas.length];
+      const dur = beats / bps;
+      if (freq > 0) this.bgmNote(freq * 2, this.bgmNextBas, dur * 0.55, 'triangle', 0.045);
+      this.bgmNextBas += dur;
+      this.bgmBasStep++;
+    }
+  }
 
   // ── パーティクル（dt駆動。tweenを使わず game.step でも正しく動く）──
   spawnParticles(x, y, color, count, upward) {
@@ -391,6 +481,7 @@ export default class GameScene extends Phaser.Scene {
   update(time, delta) {
     if (this.state !== 'running') return;
     const dt = Math.min(delta, 50) / 1000; // タブ復帰時の巨大dtを抑制
+    this.scheduleBgmNotes();
 
     // 速度アップ＆距離
     this.speed = Math.min(TUNING.maxSpeed, this.speed + TUNING.speedAccel * dt);
@@ -577,6 +668,7 @@ export default class GameScene extends Phaser.Scene {
 
   gameOver(meters) {
     this.state = 'gameover';
+    this.stopBgm();
     this.hideHint();
     this.warnText.setAlpha(0);
     this.player.setAlpha(1);

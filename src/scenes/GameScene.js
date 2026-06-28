@@ -60,9 +60,14 @@ export default class GameScene extends Phaser.Scene {
     this.bg.tileScaleX = bgScale;
     this.bg.tileScaleY = bgScale;
 
-    // ── 地面ライン（走る基準線：6px）──────────────────────────────
+    // ── 路面（FLOOR_Y〜画面下端）：アスファルト＋縁石ライン ──────
+    // 背景は空＋遠景シルエットのみなので、路面をコードで描いて接地感を出す
+    const roadH = GAME_H - FLOOR_Y; // 78px
     this.add
-      .rectangle(GAME_W / 2, FLOOR_Y, GAME_W, 6, COLORS.groundTop)
+      .rectangle(GAME_W / 2, FLOOR_Y + roadH / 2, GAME_W, roadH, 0x23232e) // アスファルト
+      .setDepth(1);
+    this.add
+      .rectangle(GAME_W / 2, FLOOR_Y + 1, GAME_W, 3, 0x4a4a5a) // 縁石ライン（明るめ）
       .setDepth(2);
 
     // ── プレイヤー（おじさんスプライト）─────────────────────────

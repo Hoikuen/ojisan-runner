@@ -738,32 +738,38 @@ export default class GameScene extends Phaser.Scene {
     const def = OBSTACLES[key];
     const x = GAME_W + 60;
 
-    let bottom; // 障害物の下端Y
-    if (def.onGround) {
-      bottom = FLOOR_Y;
-    } else {
-      bottom = FLOOR_Y - def.clearance; // 床から clearance だけ浮く
-    }
-    const top = bottom - def.h;
+    // ヒットボックス（当たり判定用）
+    const hitBottom = def.onGround ? FLOOR_Y : FLOOR_Y - def.clearance;
+    const hitTop = hitBottom - def.h;
+
+    // ビジュアル：スプライトは常に地面から立つ（poleがある障害物も含む）
+    const visualBottom = FLOOR_Y;
 
     const tk = def.textureKey;
-    let rect;
-    // 見た目は2倍サイズ（最大96px）。ヒットボックスは def.w/h のまま。
-    const visH = Math.min(def.h * 2, 96);
-    const visW = Math.round(def.w * (visH / def.h));
+    let rect, visW, visH;
     if (tk && this.textures.exists(tk)) {
-      rect = this.add.image(x, bottom, tk).setOrigin(0.5, 1).setDepth(4);
-      rect.setDisplaySize(visW, visH);
+      rect = this.add.image(x, visualBottom, tk).setOrigin(0.5, 1).setDepth(4);
+      // 自然なアスペクト比を保ちつつ適切な高さに拡大
+      // clearance障害物（テープ等）はポール込みの全体高さを表示
+      const targetH = def.onGround
+        ? Math.min(def.h * 2, 96)
+        : Math.min((def.clearance + def.h) * 1.5, 110);
+      const scale = targetH / rect.height;
+      rect.setScale(scale);
+      visH = Math.round(rect.height * scale);
+      visW = Math.round(rect.width * scale);
     } else {
-      rect = this.add.rectangle(x, bottom, visW, visH, def.color).setOrigin(0.5, 1).setDepth(4);
+      visH = Math.min(def.h * 2, 96);
+      visW = Math.round(def.w * (visH / def.h));
+      rect = this.add.rectangle(x, visualBottom, visW, visH, def.color).setOrigin(0.5, 1).setDepth(4);
     }
     // 赤いハザードグロー（障害物の視認性向上）
     const glow = this.add
-      .rectangle(x, bottom, visW + 18, visH + 18, 0xff2200, 0.55)
+      .rectangle(x, visualBottom, visW + 18, visH + 18, 0xff2200, 0.55)
       .setOrigin(0.5, 1)
       .setDepth(3);
 
-    this.obstacles.push({ x, w: def.w, h: def.h, top, bottom, rect, glow });
+    this.obstacles.push({ x, w: def.w, h: def.h, top: hitTop, bottom: hitBottom, rect, glow });
   }
 
   gameOver(meters) {

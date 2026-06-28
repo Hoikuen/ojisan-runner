@@ -229,6 +229,72 @@ Size 1536x512 (wide and short — runner game aspect). Fully opaque, no transpar
 
 ---
 
+# R6：街路障害物まとめシート（8種）★R3の差し替え
+
+**保存先：** `~/Developer/games/ojisan-runner/public/assets/sprites/raw_generated/obstacles_street_sheet.png`
+**抽出後の配置先：** `extracted_v2/obstacles_street/` → 各ファイル名は下記
+
+> **Codexへの渡し方：**
+> ```
+> 作業リポジトリは ~/Developer/games/ojisan-runner（他ゲームに保存しないこと）。
+> R6（街路障害物シート）だけ生成してください。
+> 保存先: ~/Developer/games/ojisan-runner/public/assets/sprites/raw_generated/obstacles_street_sheet.png
+> 1枚ごとにフルパスでファイル名を報告。
+> ```
+
+```
+Draw these 8 small STREET OBSTACLE icons in ONE horizontal row, evenly spaced, each on the same cell height.
+All items should look clearly dangerous/blocking — the player must jump over or duck under them.
+Each cell shows ONE item only.
+
+(1) cone     → a bright orange traffic safety cone (カラーコーン), reflective white band in the middle,
+               solid and sturdy, tilted very slightly from wind. Classic Japanese roadwork cone.
+(2) barrier  → a yellow-and-black striped construction barricade (工事バリケード), two A-frame legs,
+               wide horizontal board across the top with warning stripes. Solid obstacle.
+(3) bicycle  → an abandoned bicycle (放置自転車) parked carelessly on the sidewalk, leaning against
+               an invisible pole or just standing. Handlebar visible, wheel spokes, a basket maybe.
+               Slightly rusty, clearly in the way.
+(4) trash    → a pile of dark garbage bags (ゴミ袋) stacked messily on the sidewalk, tied at the top,
+               two or three bags in a heap. Slightly bulging. Japanese-style rubbish pileup.
+(5) vending  → a tall narrow Japanese vending machine (自動販売機), colorful drink buttons and product
+               display window, coin slot and dispensing tray at the bottom. Brightly lit.
+               Taller than wide. Unmissable on the sidewalk.
+(6) boxes    → a stack of collapsed or bulging cardboard boxes (ダンボール) piled on the sidewalk,
+               two or three boxes stacked, taped shut, slightly irregular. Brown corrugated cardboard.
+(7) sign     → a freestanding A-frame sandwich board / standing sign (立て看板), narrow wooden frame
+               with a rectangular sign face showing bold text or arrow graphic. Easily knocked over.
+(8) tape     → bright yellow construction caution tape (工事テープ) strung horizontally between two
+               orange poles or pylons, low to the ground with a small gap below it. Wide and low.
+               The player must DUCK UNDER it (not jump over).
+
+Style: cute retro 16-bit pixel-art icons, bold dark outlines, flat cel shading, vibrant colors.
+Each item side view or very slight 3/4 angle — whichever reads most clearly as a real obstacle.
+SOLID FLAT pure green chroma-key background (#00FF00) — no gradient, no shadow, no floor,
+no text, no numbers, no watermarks.
+All 8 icons in ONE horizontal row, same cell height (~200–250px), evenly spaced. Output as a single image.
+
+File names after extraction (in order, left to right):
+cone.png, barrier.png, bicycle.png, trash.png, vending.png, boxes.png, sign.png, tape.png
+```
+
+**抽出コマンド（シート到着後）：**
+```bash
+cd ~/Developer/games/ojisan-runner
+python3 tools/extract_row_sheet.py \
+  public/assets/sprites/raw_generated/obstacles_street_sheet.png \
+  --cuts 8 --bg green \
+  --out public/assets/sprites/extracted_v2/obstacles_street/
+# → cone.png, barrier.png, ... tape.png (左から順に命名)
+```
+
+**GameScene.js preload() 追加（抽出後）：**
+```js
+for (const k of ['cone','barrier','bicycle','trash','vending','boxes','sign','tape'])
+  this.load.image(`obs_${k}`, `assets/sprites/extracted_v2/obstacles_street/${k}.png`);
+```
+
+---
+
 ## 抽出後の作業（Claudeが対応）
 
 1. 緑シート → `extract_sheet.py --bg green --cols N` で分割・透過抽出

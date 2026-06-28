@@ -65,21 +65,19 @@ export const CHASER = {
   warnGap: 55, // これ以下で警告表示
 };
 
-// 障害物＝誘惑（高カロリー）。onGround=地面置き(ジャンプで避ける) /
-// clearance 指定=浮いてる(スライドで潜る)。w,h はプレースホルダーの矩形サイズ。
+// 障害物＝日本の歩道にある実在の障害物。onGround=地面置き(ジャンプで避ける) /
+// clearance 指定=浮いてる(スライドで潜る)。w,h はヒットボックスサイズ。
+// textureKey は raw_generated/obstacles_street_sheet.png 抽出後に有効になる。
 export const OBSTACLES = {
-  ramen:    { label: 'ラーメン',    w: 40, h: 40, color: 0xe24b4b, onGround: true, textureKey: 'obs_ramen' },
-  beer:     { label: 'ビール',      w: 26, h: 64, color: 0xe2a93b, onGround: true, textureKey: 'obs_beer' },
-  karaage:  { label: '唐揚げ',      w: 54, h: 34, color: 0xc8742a, onGround: true, textureKey: 'obs_karaage' },
-  // 浮遊（看板/自販機の上など）→ 立ったままだと当たる。伏せて潜る。
-  // clearance=床から障害物の下端までの隙間。duckH(32) < clearance(40) < standH(62) で
-  // 「立つと当たる／伏せると通れる」を保証。
-  vending:  { label: '自販機の看板', w: 60, h: 30, color: 0x4b78e2, clearance: 40, textureKey: 'obs_vending' },
-  // 追加誘惑
-  chocolate: { label: 'チョコレート', w: 44, h: 28, color: 0x5c2e0a, onGround: true, textureKey: 'obs_chocolate' },
-  oil:       { label: 'サラダ油',     w: 24, h: 52, color: 0xd4b800, onGround: true, textureKey: 'obs_oil' },
-  butter:    { label: 'バター',       w: 42, h: 24, color: 0xf0d050, onGround: true, textureKey: 'obs_butter' },
-  mayo:      { label: 'マヨネーズ',   w: 28, h: 56, color: 0xf5f0d0, onGround: true, textureKey: 'obs_mayo' },
+  cone:    { label: 'カラーコーン',   w: 28, h: 44, color: 0xf07020, onGround: true,   textureKey: 'obs_cone' },
+  barrier: { label: '工事バリケード', w: 62, h: 48, color: 0xf07020, onGround: true,   textureKey: 'obs_barrier' },
+  bicycle: { label: '放置自転車',     w: 56, h: 50, color: 0x888888, onGround: true,   textureKey: 'obs_bicycle' },
+  trash:   { label: 'ゴミ袋',         w: 52, h: 44, color: 0x333333, onGround: true,   textureKey: 'obs_trash' },
+  vending: { label: '自動販売機',     w: 42, h: 70, color: 0x3a9ad9, onGround: true,   textureKey: 'obs_vending' },
+  boxes:   { label: 'ダンボール',     w: 48, h: 56, color: 0xc8903c, onGround: true,   textureKey: 'obs_boxes' },
+  sign:    { label: '立て看板',       w: 44, h: 54, color: 0x444444, onGround: true,   textureKey: 'obs_sign' },
+  // 伏せて潜る障害物：clearance=床から下端の隙間。duckH(32) < clearance(44) < standH(62)
+  tape:    { label: '工事テープ',     w: 72, h: 22, color: 0xf5c800, clearance: 44,    textureKey: 'obs_tape' },
 };
 
 // ヘルシーアイテム（=逃げる助け）。誘惑の逆。拾うと効果。

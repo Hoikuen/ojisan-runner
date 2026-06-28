@@ -37,8 +37,8 @@ export default class GameScene extends Phaser.Scene {
     this.load.image('player_hurt_2', `${base}player_ojisan/hurt_2.png`);
     for (let i = 1; i <= 4; i++) this.load.image(`chaser_run_${i}`, `${base}chaser_obasan/run_${i}.png`);
     this.load.image('chaser_caught', `${base}chaser_obasan/caught.png`);
-    for (const k of ['ramen','beer','karaage','vending','chocolate','oil','butter','mayo'])
-      this.load.image(`obs_${k}`, `${base}obstacles/${k}.png`);
+    for (const k of ['cone','barrier','bicycle','trash','vending','boxes','sign','tape'])
+      this.load.image(`obs_${k}`, `${base}obstacles_street/${k}.png`);
     for (const k of ['veggie','water','aojiru','dumbbell'])
       this.load.image(`item_${k}`, `${base}items/${k}.png`);
     this.load.image('bg_sidewalk', 'assets/sprites/background/sidewalk.png');

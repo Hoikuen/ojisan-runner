@@ -21,8 +21,8 @@ const hexColor = (n) => '#' + n.toString(16).padStart(6, '0');
 // ステージ定義：走行距離(m)で切り替わる
 const STAGES = [
   { minMeters: 0,    bgKey: 'bg_sidewalk', chaserPrefix: 'chaser_obasan', label: null,                             gainMult: 1.0, spawnMult: 1.0,  bgmBpm: 170, gapPenalty: 0  },
-  { minMeters: 800,  bgKey: 'bg_evening',  chaserPrefix: 'chaser_doctor', label: 'STAGE 2\nお医者さんが追ってくる！', gainMult: 1.6, spawnMult: 1.35, bgmBpm: 192, gapPenalty: 20 },
-  { minMeters: 1800, bgKey: 'bg_night',    chaserPrefix: 'chaser_wife',   label: 'STAGE 3\n奥さんが追ってくる！',   gainMult: 2.4, spawnMult: 1.75, bgmBpm: 218, gapPenalty: 30 },
+  { minMeters: 800,  bgKey: 'bg_evening',  chaserPrefix: 'chaser_doctor', label: 'STAGE 2\nお医者さんが追ってくる！', gainMult: 1.3, spawnMult: 1.2,  bgmBpm: 192, gapPenalty: 15 },
+  { minMeters: 1800, bgKey: 'bg_night',    chaserPrefix: 'chaser_wife',   label: 'STAGE 3\n奥さんが追ってくる！',   gainMult: 1.9, spawnMult: 1.5,  bgmBpm: 218, gapPenalty: 20 },
 ];
 const ENDING_METERS = 3000;
 const CLEARED_LINES = [

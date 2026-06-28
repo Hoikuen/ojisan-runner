@@ -57,10 +57,10 @@ export const CHASER = {
   caughtGap: 0, // gap がこれ以下で捕まる→終了
   w: 52,
   h: 84, // プレイヤー(62)より大きく＝威圧感
-  baseGain: 3, // 常時の接近速度(px/s)
-  gainPerMeter: 0.013, // 距離(m)に比例して接近速度が増す（最終的に避けても捕まる）
-  passReward: 15, // 障害物を1個きれいに避けるたび gap 回復(px)
-  stumblePenalty: 55, // 障害物に当たるたび gap 喪失(px)
+  baseGain: 2.2, // 常時の接近速度(px/s)
+  gainPerMeter: 0.010, // 距離(m)に比例して接近速度が増す（最終的に避けても捕まる）
+  passReward: 18, // 障害物を1個きれいに避けるたび gap 回復(px)
+  stumblePenalty: 44, // 障害物に当たるたび gap 喪失(px)
   iFrameMs: 600, // つまずき後の無敵(連続ヒットの理不尽防止)
   warnGap: 55, // これ以下で警告表示
 };

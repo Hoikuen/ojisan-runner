@@ -66,15 +66,17 @@ export default class GameScene extends Phaser.Scene {
       .setDepth(2);
 
     // ── プレイヤー（おじさんスプライト）─────────────────────────
+    // ヒットボックスは TUNING.standH(62) のまま。表示は少し大きめ。
+    const PLAYER_DISPLAY_H = 88;
     this.player = this.add
       .image(TUNING.playerX, FLOOR_Y, 'player_run_1')
       .setOrigin(0.5, 1)
       .setDepth(5);
-    this._playerBaseScale = TUNING.standH / this.player.height;
+    this._playerBaseScale = PLAYER_DISPLAY_H / this.player.height;
     this.player.setScale(this._playerBaseScale);
-    // アニメ状態
+    // アニメ状態（初回は run_1 をフル表示してから進める）
     this.animFrame = 0;
-    this.animTimer = 0;
+    this.animTimer = 0.12;
 
     this.vy = 0;
     this.onGround = true;
@@ -102,7 +104,8 @@ export default class GameScene extends Phaser.Scene {
       .image(0, FLOOR_Y, 'chaser_run_1')
       .setOrigin(0.5, 1)
       .setDepth(4);
-    this.chaserBaseScale = CHASER.h / this.chaser.height;
+    const CHASER_DISPLAY_H = 110;
+    this.chaserBaseScale = CHASER_DISPLAY_H / this.chaser.height;
     this.chaser.setScale(this.chaserBaseScale);
     this.chaserAnimFrame = 0;
     this.chaserAnimTimer = 0;
@@ -259,6 +262,7 @@ export default class GameScene extends Phaser.Scene {
     this.invulnIsPower = false;
     o.hit = true;
     o.rect.destroy();
+    o.glow.destroy();
     this.obstacles.splice(idx, 1);
     this.cameras.main.shake(120, 0.008);
     this.cameras.main.flash(90, 255, 90, 90);
@@ -533,13 +537,18 @@ export default class GameScene extends Phaser.Scene {
       : FLOOR_Y - def.h / 2 - 4;
     const tk = def.textureKey;
     let rect;
+    // アイテムは1.5倍表示
+    const iVisW = Math.round(def.w * 1.5);
+    const iVisH = Math.round(def.h * 1.5);
     if (tk && this.textures.exists(tk)) {
       rect = this.add.image(x, cy, tk).setDepth(4);
-      rect.setDisplaySize(def.w, def.h);
+      rect.setDisplaySize(iVisW, iVisH);
     } else {
-      rect = this.add.rectangle(x, cy, def.w, def.h, def.color).setDepth(4);
+      rect = this.add.rectangle(x, cy, iVisW, iVisH, def.color).setDepth(4);
     }
-    this.items.push({ x, y: cy, w: def.w, h: def.h, def, rect });
+    // 黄金グロー（アイテムを障害物と明確に区別）
+    const aura = this.add.rectangle(x, cy, iVisW + 16, iVisH + 16, 0xffd700, 0.55).setDepth(3);
+    this.items.push({ x, y: cy, baseY: cy, w: def.w, h: def.h, def, rect, aura });
   }
 
   collectItem(it) {
@@ -555,6 +564,7 @@ export default class GameScene extends Phaser.Scene {
       this.spawnFloatText(it.x, it.y - 16, pick(FLAVOR.pickupPower), hexColor(COLORS.playerPower));
     }
     this.spawnParticles(it.x, it.y, def.color, 8, true);
+    it.aura.destroy();
     it.rect.destroy();
   }
 
@@ -636,6 +646,8 @@ export default class GameScene extends Phaser.Scene {
       const o = this.obstacles[i];
       o.x -= this.speed * dt;
       o.rect.x = o.x;
+      o.glow.x = o.x;
+      o.glow.setAlpha(0.35 + 0.35 * Math.abs(Math.sin(this.time.now / 320)));
 
       // 当たり判定（手動AABB）
       const oLeft = o.x - o.w / 2;
@@ -660,6 +672,7 @@ export default class GameScene extends Phaser.Scene {
       // 画面外で破棄
       if (o.x < -80) {
         o.rect.destroy();
+        o.glow.destroy();
         this.obstacles.splice(i, 1);
       }
     }
@@ -668,7 +681,14 @@ export default class GameScene extends Phaser.Scene {
     for (let i = this.items.length - 1; i >= 0; i--) {
       const it = this.items[i];
       it.x -= this.speed * dt;
+      // 上下浮遊アニメ
+      const bob = 7 * Math.sin(this.time.now / 420 + it.x * 0.008);
+      it.y = it.baseY + bob;
       it.rect.x = it.x;
+      it.rect.y = it.y;
+      it.aura.x = it.x;
+      it.aura.y = it.y;
+      it.aura.setAlpha(0.35 + 0.35 * Math.abs(Math.sin(this.time.now / 480)));
       const iL = it.x - it.w / 2;
       const iR = it.x + it.w / 2;
       const iT = it.y - it.h / 2;
@@ -680,6 +700,7 @@ export default class GameScene extends Phaser.Scene {
       }
       if (it.x < -60) {
         it.rect.destroy();
+        it.aura.destroy();
         this.items.splice(i, 1);
       }
     }
@@ -717,14 +738,22 @@ export default class GameScene extends Phaser.Scene {
 
     const tk = def.textureKey;
     let rect;
+    // 見た目は2倍サイズ（最大96px）。ヒットボックスは def.w/h のまま。
+    const visH = Math.min(def.h * 2, 96);
+    const visW = Math.round(def.w * (visH / def.h));
     if (tk && this.textures.exists(tk)) {
       rect = this.add.image(x, bottom, tk).setOrigin(0.5, 1).setDepth(4);
-      rect.setDisplaySize(def.w, def.h);
+      rect.setDisplaySize(visW, visH);
     } else {
-      rect = this.add.rectangle(x, bottom, def.w, def.h, def.color).setOrigin(0.5, 1).setDepth(4);
+      rect = this.add.rectangle(x, bottom, visW, visH, def.color).setOrigin(0.5, 1).setDepth(4);
     }
+    // 赤いハザードグロー（障害物の視認性向上）
+    const glow = this.add
+      .rectangle(x, bottom, visW + 18, visH + 18, 0xff2200, 0.55)
+      .setOrigin(0.5, 1)
+      .setDepth(3);
 
-    this.obstacles.push({ x, w: def.w, h: def.h, top, bottom, rect });
+    this.obstacles.push({ x, w: def.w, h: def.h, top, bottom, rect, glow });
   }
 
   gameOver(meters) {

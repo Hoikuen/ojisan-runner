@@ -24,6 +24,14 @@ const STAGES = [
   { minMeters: 800,  bgKey: 'bg_evening',  chaserPrefix: 'chaser_doctor', label: 'STAGE 2\nお医者さんが追ってくる！', gainMult: 1.6, spawnMult: 1.35, bgmBpm: 192, gapPenalty: 20 },
   { minMeters: 1800, bgKey: 'bg_night',    chaserPrefix: 'chaser_wife',   label: 'STAGE 3\n奥さんが追ってくる！',   gainMult: 2.4, spawnMult: 1.75, bgmBpm: 218, gapPenalty: 30 },
 ];
+const ENDING_METERS = 3000;
+const CLEARED_LINES = [
+  '今年の健康診断、完全バックレ成功！',
+  'メタボ判定より足が速かった！',
+  '奥さんよりも足が速い男…伝説',
+  '内臓脂肪、置き去りにしてやった',
+  '来年こそは…受けない！',
+];
 
 // 手動物理のエンドレスランナー（チェイス型）。
 // - プレイヤーはX固定。垂直は vy 変数 + 重力で手動制御（Arcade不使用＝床めり込み等の罠を回避）。
@@ -216,7 +224,7 @@ export default class GameScene extends Phaser.Scene {
       ptStartY = p.y;
       ptDucked = false;
       ptActive = true;
-      if (this.state === 'gameover') { this.restartGame(); return; }
+      if (this.state === 'gameover' || this.state === 'cleared') { this.restartGame(); return; }
     });
     this.input.on('pointermove', (p) => {
       if (!ptActive || this.state !== 'running' || ptDucked) return;
@@ -250,7 +258,7 @@ export default class GameScene extends Phaser.Scene {
   }
 
   onActionKey() {
-    if (this.state === 'gameover') this.restartGame();
+    if (this.state === 'gameover' || this.state === 'cleared') this.restartGame();
     else this.jump();
   }
 
@@ -666,6 +674,9 @@ export default class GameScene extends Phaser.Scene {
     const meters = Math.floor(this.distance * TUNING.metersPerPx);
     this.scoreText.setText(`${meters} m`);
 
+    // エンディング判定
+    if (meters >= ENDING_METERS) { this.gameCleared(meters); return; }
+
     // ステージ切り替えチェック
     const targetStage = STAGES.reduce((acc, s, i) => meters >= s.minMeters ? i : acc, 0);
     if (targetStage !== this.currentStage && !this.stageTransitioning) {
@@ -860,6 +871,71 @@ export default class GameScene extends Phaser.Scene {
       rect = this.add.rectangle(x, visualBottom, visW, visH, def.color).setOrigin(0.5, 1).setDepth(4);
     }
     this.obstacles.push({ x, w: def.w, h: def.h, top: hitTop, bottom: hitBottom, rect });
+  }
+
+  gameCleared(meters) {
+    this.state = 'cleared';
+    this.stopBgm();
+    this.hideHint();
+    this.warnText.setAlpha(0);
+    this.speedLines.forEach(sl => sl.rect.destroy());
+    this.speedLines = [];
+    this.player.clearTint();
+    this.player.setAlpha(1);
+    this.player.setScale(this._playerBaseScale * 1.1);
+    this.chaser.setAlpha(0); // 追手は画面から消える
+
+    if (meters > this.best) {
+      this.best = meters;
+      localStorage.setItem(BEST_KEY, String(meters));
+    }
+
+    // 紙吹雪
+    const confettiColors = [0xffee22, 0xff6688, 0x44ddff, 0xaaff88, 0xff9922];
+    for (let i = 0; i < 40; i++) {
+      this.time.delayedCall(i * 40, () => {
+        this.spawnParticles(
+          Math.random() * GAME_W,
+          -10 + Math.random() * GAME_H * 0.3,
+          confettiColors[(Math.random() * confettiColors.length) | 0],
+          3, false
+        );
+      });
+    }
+
+    this.cameras.main.flash(300, 255, 240, 120, true);
+
+    const ov = this.add.rectangle(GAME_W / 2, GAME_H / 2, GAME_W, GAME_H, 0x000000, 0.5).setDepth(30);
+    this.add
+      .text(GAME_W / 2, GAME_H / 2 - 98, '🎉 逃げ切った！ 🎉', {
+        fontFamily: 'sans-serif', fontSize: '42px', color: '#ffee44', fontStyle: 'bold',
+        stroke: '#994400', strokeThickness: 4,
+      })
+      .setOrigin(0.5).setDepth(31);
+    this.add
+      .text(GAME_W / 2, GAME_H / 2 - 50, `「${pick(CLEARED_LINES)}」`, {
+        fontFamily: 'sans-serif', fontSize: '20px', color: '#ffffff',
+      })
+      .setOrigin(0.5).setDepth(31);
+    this.add
+      .text(GAME_W / 2, GAME_H / 2 - 8, `距離 ${meters} m  全 3 面クリア！`, {
+        fontFamily: 'sans-serif', fontSize: '24px', color: '#ffe9a8', fontStyle: 'bold',
+      })
+      .setOrigin(0.5).setDepth(31);
+    this.add
+      .text(GAME_W / 2, GAME_H / 2 + 34, `ベスト ${this.best} m`, {
+        fontFamily: 'sans-serif', fontSize: '18px', color: '#dddddd',
+      })
+      .setOrigin(0.5).setDepth(31);
+    this.add
+      .text(GAME_W / 2, GAME_H / 2 + 76, 'タップ／スペースでリトライ', {
+        fontFamily: 'sans-serif', fontSize: '20px', color: '#bfe3ff',
+      })
+      .setOrigin(0.5).setDepth(31);
+
+    this.canRetry = false;
+    this.time.delayedCall(500, () => (this.canRetry = true));
+    void ov;
   }
 
   gameOver(meters) {

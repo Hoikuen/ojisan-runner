@@ -20,9 +20,9 @@ const hexColor = (n) => '#' + n.toString(16).padStart(6, '0');
 
 // ステージ定義：走行距離(m)で切り替わる
 const STAGES = [
-  { minMeters: 0,    bgKey: 'bg_sidewalk', chaserPrefix: 'chaser_obasan', label: null },
-  { minMeters: 1000, bgKey: 'bg_evening',  chaserPrefix: 'chaser_doctor', label: 'STAGE 2\nお医者さんが追ってくる！' },
-  { minMeters: 2500, bgKey: 'bg_night',    chaserPrefix: 'chaser_wife',   label: 'STAGE 3\n奥さんが追ってくる！' },
+  { minMeters: 0,    bgKey: 'bg_sidewalk', chaserPrefix: 'chaser_obasan', label: null,                             gainMult: 1.0, spawnMult: 1.0,  bgmBpm: 170, gapPenalty: 0  },
+  { minMeters: 1000, bgKey: 'bg_evening',  chaserPrefix: 'chaser_doctor', label: 'STAGE 2\nお医者さんが追ってくる！', gainMult: 1.6, spawnMult: 1.35, bgmBpm: 192, gapPenalty: 20 },
+  { minMeters: 2500, bgKey: 'bg_night',    chaserPrefix: 'chaser_wife',   label: 'STAGE 3\n奥さんが追ってくる！',   gainMult: 2.4, spawnMult: 1.75, bgmBpm: 218, gapPenalty: 30 },
 ];
 
 // 手動物理のエンドレスランナー（チェイス型）。
@@ -129,6 +129,7 @@ export default class GameScene extends Phaser.Scene {
     this.chaserAnimFrame = 0;
     this.chaserAnimTimer = 0;
     this.currentStage = 0;
+    this.maxStage = 0;
     this.stageTransitioning = false;
 
     // ── 進行 ────────────────────────────────────────────────────
@@ -341,7 +342,9 @@ export default class GameScene extends Phaser.Scene {
 
   triggerStageTransition(newStage) {
     this.stageTransitioning = true;
+    this.maxStage = Math.max(this.maxStage, newStage);
     const st = STAGES[newStage];
+    if (st.gapPenalty) this.changeGap(-st.gapPenalty); // 追手が勢いづく
     this.cameras.main.fadeOut(350, 0, 0, 0);
     this.cameras.main.once('camerafadeoutcomplete', () => {
       // 背景テクスチャ切り替え
@@ -526,9 +529,10 @@ export default class GameScene extends Phaser.Scene {
   scheduleBgmNotes() {
     const ctx = this.audioCtx;
     if (!ctx || !this.bgmPlaying || !this.bgmMasterGain) return;
-    // 追手が近いとテンポ上昇（パニックモード）
+    // ステージ＋追手接近でテンポ上昇
     const panic = this.gap < CHASER.warnGap;
-    const bps = (panic ? 200 : 170) / 60;
+    const baseBpm = STAGES[this.currentStage]?.bgmBpm ?? 170;
+    const bps = (panic ? baseBpm + 25 : baseBpm) / 60;
     const LOOK = 0.15;
     const now = ctx.currentTime;
     const mel = GameScene.BGM_MELODY;
@@ -665,7 +669,7 @@ export default class GameScene extends Phaser.Scene {
     }
 
     // 追手の接近：常時 + 距離に比例して加速（＝最終的にはミスなしでも捕まる）
-    const gainRate = CHASER.baseGain + meters * CHASER.gainPerMeter;
+    const gainRate = (CHASER.baseGain + meters * CHASER.gainPerMeter) * STAGES[this.currentStage].gainMult;
     this.changeGap(-gainRate * dt);
     if (this.invuln > 0) this.invuln -= delta; // 無敵の減衰
     if (this.invuln <= 0) { this.invulnIsPower = false; this.turboBonus = 0; }
@@ -731,8 +735,9 @@ export default class GameScene extends Phaser.Scene {
     this.spawnCountdown -= spd * dt;
     if (this.spawnCountdown <= 0) {
       this.spawnObstacle(meters);
-      const minGap = Math.max(270, spd * 0.82);
-      this.spawnCountdown = minGap + Math.random() * 300;
+      const spawnMult = STAGES[this.currentStage].spawnMult;
+      const minGap = Math.max(270, spd * 0.82) / spawnMult;
+      this.spawnCountdown = minGap + Math.random() * (300 / spawnMult);
     }
 
     // ヘルシーアイテムのスポーン（障害物とは別カデンツ）
@@ -897,8 +902,9 @@ export default class GameScene extends Phaser.Scene {
       })
       .setOrigin(0.5)
       .setDepth(31);
+    const stageLabel = ['1面', '2面', '3面'][this.maxStage] ?? '3面';
     this.add
-      .text(GAME_W / 2, GAME_H / 2 - 2, `距離 ${meters} m${isNewBest ? '  🎉ベスト更新!' : ''}`, {
+      .text(GAME_W / 2, GAME_H / 2 - 2, `${stageLabel}  距離 ${meters} m${isNewBest ? '  🎉ベスト更新!' : ''}`, {
         fontFamily: 'sans-serif', fontSize: '24px', color: '#ffe9a8',
       })
       .setOrigin(0.5)

@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_W, GAME_H, COLORS } from './config.js';
+import TitleScene from './scenes/TitleScene.js';
 import GameScene from './scenes/GameScene.js';
 
 const config = {
@@ -12,7 +13,7 @@ const config = {
     mode: Phaser.Scale.FIT, // どの画面でもレターボックスで収める
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
-  scene: [GameScene],
+  scene: [TitleScene, GameScene],
 };
 
 const game = new Phaser.Game(config);

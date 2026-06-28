@@ -84,10 +84,10 @@ export const OBSTACLES = {
 // kind:'gap' = 追手を引き離す(gap回復) / kind:'power' = 一定時間無敵(障害物を素通り)。
 // 食べ物アイテム：拾うと元気が出てパワーアップ！（ゲームのコメディ味付け）
 export const ITEMS = {
-  karaage: { label: '唐揚げ',     w: 42, h: 38, color: 0xc8721e, kind: 'gap',   gap: 40,  textureKey: 'item_karaage' },
-  ramen:   { label: 'ラーメン',   w: 44, h: 36, color: 0xe8c080, kind: 'gap',   gap: 28,  textureKey: 'item_ramen' },
-  mayo:    { label: 'マヨネーズ', w: 26, h: 44, color: 0xfffff0, kind: 'power', ms: 2500, textureKey: 'item_mayo' },
-  beer:    { label: 'ビール',     w: 30, h: 44, color: 0xe8c020, kind: 'power', ms: 2000, textureKey: 'item_beer' },
+  karaage: { label: '唐揚げ',     w: 42, h: 38, color: 0xc8721e, kind: 'gap',   gap: 40,  textureKey: 'item_karaage', texts: ['うまい！', '唐揚げで充電！', 'ガッツリ回復！'] },
+  ramen:   { label: 'ラーメン',   w: 44, h: 36, color: 0xe8c080, kind: 'gap',   gap: 28,  textureKey: 'item_ramen',   texts: ['ラーメン補給！', '体があったまる！', '麺で回復！'] },
+  mayo:    { label: 'マヨネーズ', w: 26, h: 44, color: 0xfffff0, kind: 'power', ms: 2500, textureKey: 'item_mayo',    texts: ['マヨパワー！', 'マヨで無敵！', '俺を止めるな！'] },
+  beer:    { label: 'ビール',     w: 30, h: 44, color: 0xe8c020, kind: 'power', ms: 2000, textureKey: 'item_beer',    texts: ['ビール無敵！', 'アルコール燃料！', '最高や！'] },
 };
 
 // アイテム出現。障害物とは別カデンツ（少し稀）。floatChance=空中(ジャンプで取る)割合。

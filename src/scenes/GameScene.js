@@ -575,13 +575,13 @@ export default class GameScene extends Phaser.Scene {
     if (def.kind === 'gap') {
       this.changeGap(def.gap);
       this.sfxPickup();
-      this.spawnFloatText(it.x, it.y - 16, pick(FLAVOR.pickupGap), hexColor(def.color));
+      this.spawnFloatText(it.x, it.y - 16, pick(def.texts), hexColor(def.color));
     } else {
       this.invuln = def.ms; // ヘルシー無敵：誘惑を素通り
       this.invulnIsPower = true;
       this.turboBonus = 180; // ターボ速度ボーナス
       this.sfxPower();
-      this.spawnFloatText(it.x, it.y - 16, pick(FLAVOR.pickupPower), '#ffee22');
+      this.spawnFloatText(it.x, it.y - 16, pick(def.texts), '#ffee22');
       this.cameras.main.flash(80, 255, 238, 0, true); // 変身フラッシュ
     }
     this.spawnParticles(it.x, it.y, def.color, 16, true); // パワー時は多め

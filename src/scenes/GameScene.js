@@ -610,10 +610,17 @@ export default class GameScene extends Phaser.Scene {
   }
 
   spawnItem(meters) {
-    const def = ITEMS[ITEM_KEYS[(Math.random() * ITEM_KEYS.length) | 0]];
     const x = GAME_W + 50;
+    // 近くに障害物があるときは少し待ってリトライ（重なり防止）
+    if (this.obstacles.some(o => Math.abs(o.x - x) < 130)) {
+      this.itemSpawnCountdown = 90;
+      return;
+    }
+    const def = ITEMS[ITEM_KEYS[(Math.random() * ITEM_KEYS.length) | 0]];
     const TARGET_ITEM_H = 52;
-    const cy = FLOOR_Y - TARGET_ITEM_H / 2 - 8; // 常に地面上に固定
+    // 地面 or 固定高さの浮き（ランダム範囲なし→毎回同じ2択）
+    const float = Math.random() < ITEM_SPAWN.floatChance;
+    const cy = float ? FLOOR_Y - 110 : FLOOR_Y - TARGET_ITEM_H / 2 - 8;
     const tk = def.textureKey;
     let rect, iVisW, iVisH; // 全アイテム統一高さ（自然なアスペクト比で幅は可変）
     if (tk && this.textures.exists(tk)) {
@@ -786,7 +793,7 @@ export default class GameScene extends Phaser.Scene {
       const it = this.items[i];
       it.x -= spd * dt;
       // 上下浮遊アニメ
-      it.y = it.baseY;
+      it.y = it.baseY + 6 * Math.sin(this.time.now / 380);
       it.rect.x = it.x;
       it.rect.y = it.y;
       const iL = it.x - it.w / 2;

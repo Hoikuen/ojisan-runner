@@ -21,8 +21,8 @@ const hexColor = (n) => '#' + n.toString(16).padStart(6, '0');
 // ステージ定義：走行距離(m)で切り替わる
 const STAGES = [
   { minMeters: 0,    bgKey: 'bg_sidewalk', chaserPrefix: 'chaser_obasan', label: null,                             gainMult: 1.0, spawnMult: 1.0,  bgmBpm: 170, gapPenalty: 0  },
-  { minMeters: 1000, bgKey: 'bg_evening',  chaserPrefix: 'chaser_doctor', label: 'STAGE 2\nお医者さんが追ってくる！', gainMult: 1.6, spawnMult: 1.35, bgmBpm: 192, gapPenalty: 20 },
-  { minMeters: 2500, bgKey: 'bg_night',    chaserPrefix: 'chaser_wife',   label: 'STAGE 3\n奥さんが追ってくる！',   gainMult: 2.4, spawnMult: 1.75, bgmBpm: 218, gapPenalty: 30 },
+  { minMeters: 800,  bgKey: 'bg_evening',  chaserPrefix: 'chaser_doctor', label: 'STAGE 2\nお医者さんが追ってくる！', gainMult: 1.6, spawnMult: 1.35, bgmBpm: 192, gapPenalty: 20 },
+  { minMeters: 1800, bgKey: 'bg_night',    chaserPrefix: 'chaser_wife',   label: 'STAGE 3\n奥さんが追ってくる！',   gainMult: 2.4, spawnMult: 1.75, bgmBpm: 218, gapPenalty: 30 },
 ];
 
 // 手動物理のエンドレスランナー（チェイス型）。
@@ -612,11 +612,8 @@ export default class GameScene extends Phaser.Scene {
   spawnItem(meters) {
     const def = ITEMS[ITEM_KEYS[(Math.random() * ITEM_KEYS.length) | 0]];
     const x = GAME_W + 50;
-    const float = Math.random() < ITEM_SPAWN.floatChance;
     const TARGET_ITEM_H = 52;
-    const cy = float
-      ? FLOOR_Y - (ITEM_SPAWN.floatYMin + Math.random() * (ITEM_SPAWN.floatYMax - ITEM_SPAWN.floatYMin))
-      : FLOOR_Y - TARGET_ITEM_H / 2 - 8; // 視覚高さ基準＋bob(±7px)分マージン
+    const cy = FLOOR_Y - TARGET_ITEM_H / 2 - 8; // 常に地面上に固定
     const tk = def.textureKey;
     let rect, iVisW, iVisH; // 全アイテム統一高さ（自然なアスペクト比で幅は可変）
     if (tk && this.textures.exists(tk)) {
@@ -789,8 +786,7 @@ export default class GameScene extends Phaser.Scene {
       const it = this.items[i];
       it.x -= spd * dt;
       // 上下浮遊アニメ
-      const bob = 7 * Math.sin(this.time.now / 420 + it.x * 0.008);
-      it.y = it.baseY + bob;
+      it.y = it.baseY;
       it.rect.x = it.x;
       it.rect.y = it.y;
       const iL = it.x - it.w / 2;

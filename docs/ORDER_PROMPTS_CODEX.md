@@ -295,6 +295,118 @@ for (const k of ['cone','barrier','bicycle','trash','vending','boxes','sign','ta
 
 ---
 
+# R7：主人公おじさん・キャラリデザイン（おじさんX版に寄せる）★R0/R1の差し替え
+
+> **目的：** 既存キャラのスプライトを「おじさんX」主人公に近いビジュアルへ更新。
+> 白縁メガネ・太い口ひげ・赤ネクタイを追加。ポーズ・コマ構成はR0/R1と全く同じ。
+
+> **Codexへの渡し方：**
+> ```
+> 作業リポジトリは ~/Developer/games/ojisan-runner（他ゲームに保存しないこと）。
+> R7を2シート生成してください。
+> 保存先:
+>   ~/Developer/games/ojisan-runner/public/assets/sprites/raw_generated/ojisan_run_v2_sheet.png  （4コマ）
+>   ~/Developer/games/ojisan-runner/public/assets/sprites/raw_generated/ojisan_react_v2_sheet.png（4コマ）
+> 1枚ごとにフルパスでファイル名を報告。
+> 参考キャラ画像（同じおじさん・別ゲーム版）:
+>   ~/Developer/games/ojisan-x/public/assets/sprites/extracted_v2/player_ojisan/idle_1.png
+>   ~/Developer/games/ojisan-x/public/assets/sprites/extracted_v2/player_ojisan/walk_2.png
+> これらのキャラのビジュアル（メガネ・ひげ・ネクタイ・スーツ色）をランナーに適用してください。
+> ```
+
+### キャラ共通記述（R7用 — 参考画像の特徴を明記）
+```
+CHARACTER "Ojisan Runner" v2 — redesigned to match the "Ojisan-X" hero:
+- Face: very round and chubby, rosy flushed cheeks, short black hair
+- Glasses: THICK WHITE RECTANGULAR frames, large lenses covering most of the eye area
+- Mustache: VERY THICK FULL BLACK MUSTACHE, wide and prominent, filling the area between nose and upper lip
+- Clothes: dark navy business suit, gold buttons, WHITE DRESS SHIRT, RED TIE (visible at chest)
+- Expression: wide terrified eyes, open mouth, sweat drops flying everywhere (panic/sprint mode)
+- Proportions: 2-3 head body ratio, short plump limbs, chubby silhouette
+- Size: same pixel size as previous version (~300×300 canvas per pose)
+KEEP THE EXACT SAME character — same head-to-body ratio and SAME overall pixel size in every pose.
+```
+
+---
+
+## R7a：走行シート（4コマ）
+
+**保存先：** `public/assets/sprites/raw_generated/ojisan_run_v2_sheet.png`
+**抽出後の上書き先：** `extracted_v2/player_ojisan/` → `run_1.png` `run_2.png` `run_3.png` `run_4.png`
+
+```
+[CHARACTER "Ojisan Runner" v2 — see above]
+
+Draw these 4 RUNNING poses in ONE horizontal row, evenly spaced, same character same scale, feet aligned to the bottom:
+
+(1) run_1 — full sprint: RIGHT leg fully extended forward, left leg bent behind,
+             left arm punching forward, right arm pulled back.
+             Red tie whipping backward from speed. Sweat drops flying.
+(2) run_2 — mid-stride transition: both feet near ground level, arms crossing at center,
+             mouth wide open panting, leaning slightly forward. Tie still flapping.
+(3) run_3 — full sprint: LEFT leg fully extended forward, right leg bent behind,
+             right arm punching forward, left arm pulled back. Sweat drops flying.
+(4) run_4 — mid-stride transition: weight shifting, arms re-crossing, WHITE GLASSES
+             slightly askew from the speed, tie lashing to the side.
+
+[STYLE — see common block above]
+```
+
+---
+
+## R7b：リアクションシート（4コマ）
+
+**保存先：** `public/assets/sprites/raw_generated/ojisan_react_v2_sheet.png`
+**抽出後の上書き先：** `extracted_v2/player_ojisan/` → `jump.png` `duck.png` `hurt_1.png` `hurt_2.png`
+
+```
+[CHARACTER "Ojisan Runner" v2 — see above]
+
+Draw these 4 poses in ONE horizontal row, evenly spaced, same character same scale, feet aligned to the bottom:
+
+(1) jump — AIRBORNE: both knees tucked up toward chest, arms raised high, body compact in mid-air,
+            sweat drops arcing outward. Red tie floats upward. Eyes wide with fear/excitement.
+            White glasses catching the light.
+(2) duck — CROUCHING SLIDE: very low flat crouch, body flattened horizontally close to ground,
+            knees bent, head tucked, arms slightly extended forward for balance.
+            Suit jacket hitched up, red tie dragging on the floor. Desperate grimace.
+            Clearly much lower than standing height.
+(3) hurt_1 — STUMBLING: tripping forward off-balance, one foot caught mid-step, arms flailing
+              outward, body lurching forward at an angle. WHITE GLASSES flying slightly askew.
+              Shocked open-mouthed expression. Sweat and speed lines everywhere.
+(4) hurt_2 — STUMBLE RECOVERY: hunched forward recovering from the trip, one knee lower,
+              arms out for balance, glasses completely crooked, pained desperate expression,
+              sweat and tears mixing. Red tie hanging loose.
+
+[STYLE — see common block above]
+```
+
+---
+
+**抽出コマンド（シート到着後）：**
+```bash
+cd ~/Developer/games/ojisan-runner
+
+# 走行シート（4コマ）
+python3 tools/extract_row_sheet.py \
+  public/assets/sprites/raw_generated/ojisan_run_v2_sheet.png \
+  --cuts 4 --bg green \
+  --out public/assets/sprites/extracted_v2/player_ojisan/ \
+  --names run_1 run_2 run_3 run_4
+
+# リアクションシート（4コマ）
+python3 tools/extract_row_sheet.py \
+  public/assets/sprites/raw_generated/ojisan_react_v2_sheet.png \
+  --cuts 4 --bg green \
+  --out public/assets/sprites/extracted_v2/player_ojisan/ \
+  --names jump duck hurt_1 hurt_2
+```
+
+> `extract_row_sheet.py` が `--names` オプションに対応していない場合は、
+> 抽出後に `0.png→run_1.png` のようにリネームすればOK。
+
+---
+
 ## 抽出後の作業（Claudeが対応）
 
 1. 緑シート → `extract_sheet.py --bg green --cols N` で分割・透過抽出

@@ -75,6 +75,11 @@ export const OBSTACLES = {
   // clearance=床から障害物の下端までの隙間。duckH(32) < clearance(40) < standH(62) で
   // 「立つと当たる／伏せると通れる」を保証。
   vending: { label: '自販機の看板', w: 60, h: 30, color: 0x4b78e2, clearance: 40 },
+  // 追加誘惑
+  chocolate: { label: 'チョコレート', w: 44, h: 28, color: 0x5c2e0a, onGround: true },
+  oil:       { label: 'サラダ油',     w: 24, h: 52, color: 0xd4b800, onGround: true },
+  butter:    { label: 'バター',       w: 42, h: 24, color: 0xf0d050, onGround: true },
+  mayo:      { label: 'マヨネーズ',   w: 28, h: 56, color: 0xf5f0d0, onGround: true },
 };
 
 // ヘルシーアイテム（=逃げる助け）。誘惑の逆。拾うと効果。

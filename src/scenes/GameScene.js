@@ -21,8 +21,8 @@ const hexColor = (n) => '#' + n.toString(16).padStart(6, '0');
 // ステージ定義：走行距離(m)で切り替わる
 const STAGES = [
   { minMeters: 0,    bgKey: 'bg_sidewalk', chaserPrefix: 'chaser_obasan', label: null },
-  { minMeters: 500,  bgKey: 'bg_evening',  chaserPrefix: 'chaser_doctor', label: 'STAGE 2\nお医者さんが追ってくる！' },
-  { minMeters: 1200, bgKey: 'bg_night',    chaserPrefix: 'chaser_wife',   label: 'STAGE 3\n奥さんが追ってくる！' },
+  { minMeters: 1000, bgKey: 'bg_evening',  chaserPrefix: 'chaser_doctor', label: 'STAGE 2\nお医者さんが追ってくる！' },
+  { minMeters: 2500, bgKey: 'bg_night',    chaserPrefix: 'chaser_wife',   label: 'STAGE 3\n奥さんが追ってくる！' },
 ];
 
 // 手動物理のエンドレスランナー（チェイス型）。

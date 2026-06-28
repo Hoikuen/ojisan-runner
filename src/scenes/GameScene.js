@@ -147,7 +147,7 @@ export default class GameScene extends Phaser.Scene {
 
     // 操作ヒント（数秒で消える）
     this.hint = this.add
-      .text(GAME_W / 2, GAME_H / 2 - 40, 'タップ／クリック：ジャンプ\n画面下を長押し（または↓）：伏せる', {
+      .text(GAME_W / 2, GAME_H / 2 - 40, 'タップ：ジャンプ　下にスワイプ：伏せる\n（キーボード：スペース／↑↓）', {
         fontFamily: 'sans-serif',
         fontSize: '18px',
         color: '#1d2a33',
@@ -171,18 +171,26 @@ export default class GameScene extends Phaser.Scene {
   }
 
   setupInput() {
-    // ポインタ：画面下 1/3 は「伏せる」ゾーン、それ以外は「ジャンプ」
+    // タップ＝ジャンプ、下スワイプ（40px超）＝しゃがむ
+    let ptStartY = 0;
+    let ptDucked = false;
+
     this.input.on('pointerdown', (p) => {
-      this.initAudio(); // 初回ジェスチャでオーディオ解禁
-      if (this.state === 'gameover') {
-        this.restartGame();
-        return;
-      }
-      if (p.y > GAME_H * 0.66) this.startDuck();
-      else this.jump();
+      this.initAudio();
+      ptStartY = p.y;
+      ptDucked = false;
+      if (this.state === 'gameover') { this.restartGame(); return; }
     });
-    this.input.on('pointerup', () => this.stopDuck());
-    this.input.on('pointerupoutside', () => this.stopDuck());
+    this.input.on('pointermove', (p) => {
+      if (this.state !== 'running' || ptDucked) return;
+      if (p.y - ptStartY > 40) { ptDucked = true; this.startDuck(); }
+    });
+    this.input.on('pointerup', () => {
+      if (this.state === 'running' && !ptDucked) this.jump();
+      this.stopDuck();
+      ptDucked = false;
+    });
+    this.input.on('pointerupoutside', () => { this.stopDuck(); ptDucked = false; });
 
     // キーボード
     const kb = this.input.keyboard;

@@ -105,6 +105,8 @@ export default class GameScene extends Phaser.Scene {
     this.gap = CHASER.gapStart; // プレイヤーより前にいる距離
     this.invuln = 0; // 無敵の残り(ms)。つまずき後 or ヘルシー無敵で共有
     this.invulnIsPower = false; // true=ヘルシー無敵 / false=つまずき無敵
+    this.turboBonus = 0; // パワーアイテム中の速度ボーナス(px/s)
+    this.speedLines = []; // ターボ中のスピードライン
     this.chaser = this.add
       .image(0, FLOOR_Y, 'chaser_run_1')
       .setOrigin(0.5, 1)
@@ -355,16 +357,18 @@ export default class GameScene extends Phaser.Scene {
     this.player.scaleY = this._playerBaseScale;
     this.player.scaleX = this._playerBaseScale * (1 + (ducking || airborne ? 0 : 0.18 * squash));
 
-    // ヘルシー無敵ティント
+    // ターボ変身：黄色ティント＋1.08倍スケール
     if (powered) {
-      this.player.setTint(COLORS.playerPower);
+      this.player.setTint(0xffee22);
+      this.player.scaleX *= 1.08;
+      this.player.scaleY *= 1.08;
     } else {
       this.player.clearTint();
     }
 
-    // 無敵中の点滅
+    // 無敵中の点滅（ターボ時は控えめに）
     this.player.setAlpha(
-      inv && Math.floor(this.time.now / 80) % 2 === 0 ? (powered ? 0.7 : 0.45) : 1
+      inv && Math.floor(this.time.now / 80) % 2 === 0 ? (powered ? 0.82 : 0.45) : 1
     );
   }
 
@@ -575,10 +579,12 @@ export default class GameScene extends Phaser.Scene {
     } else {
       this.invuln = def.ms; // ヘルシー無敵：誘惑を素通り
       this.invulnIsPower = true;
+      this.turboBonus = 180; // ターボ速度ボーナス
       this.sfxPower();
-      this.spawnFloatText(it.x, it.y - 16, pick(FLAVOR.pickupPower), hexColor(COLORS.playerPower));
+      this.spawnFloatText(it.x, it.y - 16, pick(FLAVOR.pickupPower), '#ffee22');
+      this.cameras.main.flash(80, 255, 238, 0, true); // 変身フラッシュ
     }
-    this.spawnParticles(it.x, it.y, def.color, 8, true);
+    this.spawnParticles(it.x, it.y, def.color, 16, true); // パワー時は多め
     it.rect.destroy();
   }
 
@@ -589,7 +595,7 @@ export default class GameScene extends Phaser.Scene {
 
     // 速度アップ＆距離
     this.speed = Math.min(TUNING.maxSpeed, this.speed + TUNING.speedAccel * dt);
-    this.distance += this.speed * dt;
+    this.distance += (this.speed + this.turboBonus) * dt;
     const meters = Math.floor(this.distance * TUNING.metersPerPx);
     this.scoreText.setText(`${meters} m`);
 
@@ -597,7 +603,7 @@ export default class GameScene extends Phaser.Scene {
     const gainRate = CHASER.baseGain + meters * CHASER.gainPerMeter;
     this.changeGap(-gainRate * dt);
     if (this.invuln > 0) this.invuln -= delta; // 無敵の減衰
-    if (this.invuln <= 0) this.invulnIsPower = false;
+    if (this.invuln <= 0) { this.invulnIsPower = false; this.turboBonus = 0; }
 
     // プレイヤー垂直物理
     this.vy += TUNING.gravity * dt;
@@ -623,7 +629,29 @@ export default class GameScene extends Phaser.Scene {
     const sq = this.landSquash > 0 ? Math.max(0, this.landSquash) / 0.16 : 0;
     const inv = this.invuln > 0;
     const powered = inv && this.invulnIsPower;
+    const spd = this.speed + this.turboBonus; // ターボ中は+180px/s
     this.updatePlayerSprite(dt, sq, inv, powered);
+
+    // ターボ中：スピードライン生成
+    if (powered && Math.random() < 0.55) {
+      const ly = this.player.y - 12 - Math.random() * 65;
+      const len = 38 + Math.random() * 52;
+      const col = Math.random() < 0.6 ? 0xffee44 : 0xffffff;
+      const line = this.add.rectangle(this.player.x - 30, ly, len, 2, col, 0.9).setDepth(4.5);
+      this.speedLines.push({ rect: line, life: 0.14 });
+    }
+    // スピードライン更新（常に走らせて自動消滅）
+    for (let i = this.speedLines.length - 1; i >= 0; i--) {
+      const sl = this.speedLines[i];
+      sl.life -= dt;
+      sl.rect.x -= (spd + 380) * dt;
+      sl.rect.setAlpha(Math.max(0, sl.life / 0.14 * 0.9));
+      if (sl.life <= 0) { sl.rect.destroy(); this.speedLines.splice(i, 1); }
+    }
+    if (!powered && this.speedLines.length > 0) {
+      this.speedLines.forEach(sl => sl.rect.destroy());
+      this.speedLines = [];
+    }
     const panic = this.gap < CHASER.warnGap;
     this.sweatTimer -= dt;
     if (this.sweatTimer <= 0) {
@@ -632,19 +660,18 @@ export default class GameScene extends Phaser.Scene {
     }
 
     // 背景スクロール
-    this.bg.tilePositionX += this.speed * 0.4 * dt; // 背景パーラックス（遠景シルエット想定）
+    this.bg.tilePositionX += spd * 0.4 * dt; // 背景パーラックス（遠景シルエット想定）
 
     // 障害物スポーン
-    this.spawnCountdown -= this.speed * dt;
+    this.spawnCountdown -= spd * dt;
     if (this.spawnCountdown <= 0) {
       this.spawnObstacle(meters);
-      // 次までの間隔：速いほど広げて理不尽防止（反応時間を確保）
-      const minGap = Math.max(270, this.speed * 0.82);
+      const minGap = Math.max(270, spd * 0.82);
       this.spawnCountdown = minGap + Math.random() * 300;
     }
 
     // ヘルシーアイテムのスポーン（障害物とは別カデンツ）
-    this.itemSpawnCountdown -= this.speed * dt;
+    this.itemSpawnCountdown -= spd * dt;
     if (this.itemSpawnCountdown <= 0) {
       if (meters >= ITEM_SPAWN.startAfterMeters) this.spawnItem(meters);
       this.itemSpawnCountdown = ITEM_SPAWN.minGap + Math.random() * ITEM_SPAWN.randGap;
@@ -658,7 +685,7 @@ export default class GameScene extends Phaser.Scene {
 
     for (let i = this.obstacles.length - 1; i >= 0; i--) {
       const o = this.obstacles[i];
-      o.x -= this.speed * dt;
+      o.x -= spd * dt;
       o.rect.x = o.x;
       // 当たり判定（手動AABB）
       const oLeft = o.x - o.w / 2;
@@ -690,7 +717,7 @@ export default class GameScene extends Phaser.Scene {
     // ヘルシーアイテム移動＆取得（プレイヤーAABBは上で算出済み）
     for (let i = this.items.length - 1; i >= 0; i--) {
       const it = this.items[i];
-      it.x -= this.speed * dt;
+      it.x -= spd * dt;
       // 上下浮遊アニメ
       const bob = 7 * Math.sin(this.time.now / 420 + it.x * 0.008);
       it.y = it.baseY + bob;
@@ -773,6 +800,8 @@ export default class GameScene extends Phaser.Scene {
     this.sfxCaught();
 
     // プレイヤー → hurt ポーズ、追手 → caught ポーズ
+    this.speedLines.forEach(sl => sl.rect.destroy());
+    this.speedLines = [];
     this.player.setTexture('player_hurt_1');
     this.player.setScale(this._playerBaseScale);
     this.player.clearTint();

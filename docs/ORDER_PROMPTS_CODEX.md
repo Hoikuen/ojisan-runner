@@ -439,6 +439,206 @@ python3 tools/extract_row_sheet.py \
 
 ---
 
+# R6v2：街路障害物・真横サイドビュー版（R6の差し替え）
+
+> **⚠️ R6との違い：** R6は一部スプライトが3/4俯瞰視点で描かれ地面と合わなかった。
+> 今回は**全8種を厳密な真横サイドビュー専用**で再発注。上面・奥行き・パース完全禁止。
+
+**保存先：** `public/assets/sprites/raw_generated/obstacles_street_v2_sheet.png`
+**抽出後の上書き先：** `extracted_v2/obstacles_street/` → 各ファイル名は下記
+
+> **Codexへの渡し方：**
+> ```
+> 作業リポジトリは ~/Developer/games/ojisan-runner（他ゲームに保存しないこと）。
+> R6v2（街路障害物・真横版）だけ生成してください。
+> 保存先: ~/Developer/games/ojisan-runner/public/assets/sprites/raw_generated/obstacles_street_v2_sheet.png
+> フルパスで報告。
+> ```
+
+```
+Draw these 8 small STREET OBSTACLE icons in ONE horizontal row, evenly spaced, same cell height.
+
+════ CRITICAL VIEW RULE ════
+ALL items must be drawn in STRICT FLAT SIDE VIEW (真横・サイドビュー専用):
+• NO top surface visible — you must NOT see the top of any object
+• NO perspective depth — objects have NO 3D foreshortening
+• NO isometric or 3/4 angle — pure flat left-to-right silhouette only
+• Think: how would the object look if photographed from perfectly eye level on the street
+
+(1) cone     → orange traffic safety cone, flat side profile: triangle-like shape, white band visible
+               on the side only. NO visible top circle. Feet of the cone as a flat base.
+(2) barrier  → yellow-and-black striped construction barricade: two A-frame legs visible from the side,
+               horizontal board across the top. Side view — no perspective on the legs.
+(3) bicycle  → abandoned bicycle, strict side view: one wheel in front, one behind, frame visible,
+               handlebar and saddle shown from side. A basket on front handle. Clean silhouette.
+(4) trash    → pile of dark garbage bags, side view: 2–3 bags heaped together, seen from the side.
+               Round blob-like shapes stacked horizontally. No top surface.
+(5) vending  → tall narrow Japanese vending machine, strict side/front view: rectangle taller than wide,
+               colorful drink display visible on front face. Flat frontal look, no depth.
+(6) boxes    → stack of cardboard boxes, side view: 2–3 boxes piled, flat rectangular stacked shapes.
+               Box edges visible from the side, tape lines horizontal. No top surface.
+(7) sign     → A-frame sandwich board, side view: shows the narrow side of the A-frame — two angled legs
+               meeting at top, sign face between them. Very thin profile from the side.
+(8) tape     → construction caution tape strung between two poles, side view: two vertical poles with
+               a horizontal yellow tape stretching between them at mid-height. Wide and low shape.
+               The gap below the tape (duck-under obstacle) must be clearly visible.
+
+Style: cute retro 16-bit pixel-art icons, bold dark outlines, flat cel shading, vibrant colors.
+SOLID FLAT pure green chroma-key background (#00FF00) — no gradient, no shadow, no floor, no text.
+All 8 icons in ONE horizontal row, same cell height (~200–250px), evenly spaced. Output as a single image.
+
+File names after extraction (in order, left to right):
+cone.png, barrier.png, bicycle.png, trash.png, vending.png, boxes.png, sign.png, tape.png
+```
+
+---
+
+# R8：追手２・お医者さん（Stage 2）
+
+> **Stage 2（500m〜）の追手。** 白衣・聴診器・険しい顔。おばさんより速い。
+
+**保存先：** `public/assets/sprites/raw_generated/doctor_run_sheet.png`
+**抽出後の配置先：** `extracted_v2/chaser_doctor/` → `run_1〜run_4.png` + `caught.png`
+
+> **Codexへの渡し方：**
+> ```
+> 作業リポジトリは ~/Developer/games/ojisan-runner（他ゲームに保存しないこと）。
+> R8（お医者さん追手シート）だけ生成してください。
+> 保存先: ~/Developer/games/ojisan-runner/public/assets/sprites/raw_generated/doctor_run_sheet.png
+> フルパスで報告。
+> ```
+
+```
+CHARACTER "Doctor Chaser": a Japanese male doctor, 40s, pursuing the player.
+Round face, short black hair, stern determined expression, sweat drops everywhere.
+Wearing a WHITE LAB COAT (white coat flapping behind from the speed), stethoscope around neck,
+dark trousers, dress shoes. Chubby build, short stature. Holding a clipboard or health report.
+2-3 head body proportion, stocky limbs. Face flushed red, furious expression.
+KEEP THE EXACT SAME character — same head-to-body ratio and SAME overall pixel size in every pose.
+
+Draw these 5 poses in ONE horizontal row, evenly spaced, same character same scale, feet aligned to the bottom:
+
+(1) run_1 — full sprint CHASING: RIGHT leg fully extended forward, left leg back,
+             left arm forward (clipboard in hand), right arm back. White coat flapping.
+             Stethoscope bouncing. Angry determined glare. Sweat drops flying.
+(2) run_2 — mid-stride: both feet near ground, arms crossing, mouth open shouting.
+             White coat swishing from speed.
+(3) run_3 — full sprint CHASING: LEFT leg fully extended forward, right leg back,
+             right arm forward, left arm back. More sweat, furious eyes.
+(4) run_4 — mid-stride transition: body slightly upright, face shouting, coat billowing.
+(5) caught — TRIUMPHANT GRAB: both arms outstretched reaching forward, mouth open wide in a shout,
+             clipboard raised in one hand. One foot off the ground in a final pounce. "CAUGHT YOU!"
+
+Style: cute retro 16-bit pixel-art game sprite, bold dark outlines, flat cel shading, vibrant colors.
+Side view, facing right, full body, feet on the very bottom edge.
+SOLID FLAT pure green chroma-key background (#00FF00). All 5 poses ONE row. Output single image.
+```
+
+---
+
+# R9：追手３・奥さん（Stage 3）
+
+> **Stage 3（1200m〜）の追手。** 割烹着or主婦スタイル・体重計を持つ・最強追手。
+
+**保存先：** `public/assets/sprites/raw_generated/wife_run_sheet.png`
+**抽出後の配置先：** `extracted_v2/chaser_wife/` → `run_1〜run_4.png` + `caught.png`
+
+> **Codexへの渡し方：**
+> ```
+> 作業リポジトリは ~/Developer/games/ojisan-runner（他ゲームに保存しないこと）。
+> R9（奥さん追手シート）だけ生成してください。
+> 保存先: ~/Developer/games/ojisan-runner/public/assets/sprites/raw_generated/wife_run_sheet.png
+> フルパスで報告。
+> ```
+
+```
+CHARACTER "Wife Chaser": a Japanese housewife, late 30s, the most terrifying pursuer of all.
+Round face, short hair (housewife perm), terrifyingly calm-yet-angry expression.
+Wearing a KAPPOGI (割烹着 — traditional Japanese housewife apron over clothes), or a casual
+floral blouse with an apron, holding a SCALE (体重計 — bathroom weight scale) in one hand
+like a weapon. Plump build, short stature. Face flushed, deadly serious.
+2-3 head body proportion. She is FASTER than the other chasers — her stride is powerful.
+KEEP THE EXACT SAME character — same head-to-body ratio and SAME overall pixel size in every pose.
+
+Draw these 5 poses in ONE horizontal row, evenly spaced, same character same scale, feet aligned to the bottom:
+
+(1) run_1 — full sprint: RIGHT leg forward, left leg back, scale held forward like a torch,
+             apron flapping. Deadpan-furious expression. Sweat drops.
+(2) run_2 — mid-stride: arms crossing, scale swinging, mouth open ("あなた！止まりなさい！").
+(3) run_3 — full sprint: LEFT leg forward, right leg back, scale raised. More determined.
+(4) run_4 — mid-stride: body upright, scale pressed to chest, expression absolutely murderous.
+(5) caught — TRIUMPHANT CAPTURE: scale held high in one hand like a trophy, other hand grabbing,
+             expression shifts to cold satisfaction. One foot planted, standing over the player.
+
+Style: cute retro 16-bit pixel-art game sprite, bold dark outlines, flat cel shading, vibrant colors.
+Side view, facing right, full body, feet on the very bottom edge.
+SOLID FLAT pure green chroma-key background (#00FF00). All 5 poses ONE row. Output single image.
+```
+
+---
+
+# R5a/b/c：ステージ別背景3種（昼/夕方/夜）
+
+> **Stage 1=昼（現在のsidewalk.png）** は既存を流用。以下の2種を追加発注する。
+> 全て同じ構図（空＋遠景シルエット・地面なし）でカラーパレットだけ変える。
+
+## R5b：夕方背景（Stage 2）
+
+**保存先：** `public/assets/sprites/background/evening.png`
+
+> **Codexへの渡し方：**
+> ```
+> R5b（夕方背景）を1枚生成してください。
+> 保存先: ~/Developer/games/ojisan-runner/public/assets/sprites/background/evening.png
+> ```
+
+```
+[R5と同じ構図・同じレイアウトルール。カラーパレットのみ変更]
+
+A wide seamlessly-tileable side-scrolling 2D game background. Size: 1536 × 512 pixels. Fully opaque.
+
+════ LAYOUT (same as R5) ════
+• TOP 65%: evening sky — deep orange-red at the horizon fading to dark purple/indigo at the top.
+  Dramatic sunset clouds in orange, pink, purple. No sun visible (just below horizon).
+• MIDDLE 25%: same city silhouette shapes as R5 but rendered as DARK SILHOUETTES against the
+  sunset sky. The buildings are nearly black/very dark navy, no detail, pure shapes.
+• BOTTOM 10%: darkening horizon. NO floor, NO sidewalk, NO road, NO poles, NO trees.
+
+════ MOOD ════ Dramatic Tokyo sunset. Warm orange glow, slightly ominous. The chase is getting serious.
+
+Style: retro 16-bit pixel-art, flat colors, seamlessly tileable left-right. 1536×512, fully opaque.
+```
+
+## R5c：夜背景（Stage 3）
+
+**保存先：** `public/assets/sprites/background/night.png`
+
+> **Codexへの渡し方：**
+> ```
+> R5c（夜背景）を1枚生成してください。
+> 保存先: ~/Developer/games/ojisan-runner/public/assets/sprites/background/night.png
+> ```
+
+```
+[R5と同じ構図。夜バージョン]
+
+A wide seamlessly-tileable side-scrolling 2D game background. Size: 1536 × 512 pixels. Fully opaque.
+
+════ LAYOUT (same as R5) ════
+• TOP 65%: dark night sky — deep navy to black. A large bright full moon in the upper area.
+  Several bright stars scattered across the sky. Perhaps a few wisps of dark cloud.
+• MIDDLE 25%: city skyline silhouettes, now with a few tiny lit windows (2–3 pixels of warm yellow
+  light per building, randomly placed). Buildings are very dark navy/black shapes against the
+  night sky. The moon casts a faint glow on the rooftops (slightly lighter top edges).
+• BOTTOM 10%: dark horizon. NO floor, NO sidewalk, NO road, NO poles, NO trees.
+
+════ MOOD ════ Late night chase. Tense and dramatic. The wife is catching up.
+
+Style: retro 16-bit pixel-art, flat colors, seamlessly tileable left-right. 1536×512, fully opaque.
+```
+
+---
+
 ## 抽出後の作業（Claudeが対応）
 
 1. 緑シート → `extract_sheet.py --bg green --cols N` で分割・透過抽出

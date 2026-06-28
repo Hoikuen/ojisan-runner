@@ -81,12 +81,13 @@ export const OBSTACLES = {
 };
 
 // ヘルシーアイテム（=逃げる助け）。誘惑の逆。拾うと効果。
-// kind:'gap' = 追手を引き離す(gap回復) / kind:'power' = 一定時間無敵(誘惑を素通り)。
+// kind:'gap' = 追手を引き離す(gap回復) / kind:'power' = 一定時間無敵(障害物を素通り)。
+// 食べ物アイテム：拾うと元気が出てパワーアップ！（ゲームのコメディ味付け）
 export const ITEMS = {
-  veggie:   { label: '野菜',    w: 30, h: 30, color: 0x5cb85c, kind: 'gap',   gap: 30,  textureKey: 'item_veggie' },
-  water:    { label: '水',      w: 26, h: 34, color: 0x39a8e6, kind: 'gap',   gap: 22,  textureKey: 'item_water' },
-  aojiru:   { label: '青汁',    w: 28, h: 36, color: 0x2e8b3d, kind: 'power', ms: 2200, textureKey: 'item_aojiru' },
-  dumbbell: { label: 'ダンベル', w: 44, h: 18, color: 0x9aa0a6, kind: 'power', ms: 2600, textureKey: 'item_dumbbell' },
+  karaage: { label: '唐揚げ',     w: 42, h: 38, color: 0xc8721e, kind: 'gap',   gap: 40,  textureKey: 'item_karaage' },
+  ramen:   { label: 'ラーメン',   w: 44, h: 36, color: 0xe8c080, kind: 'gap',   gap: 28,  textureKey: 'item_ramen' },
+  mayo:    { label: 'マヨネーズ', w: 26, h: 44, color: 0xfffff0, kind: 'power', ms: 2500, textureKey: 'item_mayo' },
+  beer:    { label: 'ビール',     w: 30, h: 44, color: 0xe8c020, kind: 'power', ms: 2000, textureKey: 'item_beer' },
 };
 
 // アイテム出現。障害物とは別カデンツ（少し稀）。floatChance=空中(ジャンプで取る)割合。
@@ -126,8 +127,8 @@ export const FLAVOR = {
     'ここまで逃げたのは立派…でも捕まった',
     '伝説の逃走、ついに終わる',
   ],
-  pickupGap: ['ヘルシー！', '健康！', 'うまい'],
-  pickupPower: ['無敵だ！', 'みなぎる！', '青汁パワー！'],
+  pickupGap: ['うまい！', '唐揚げで充電！', 'ガッツリ回復！', 'ラーメン補給！'],
+  pickupPower: ['マヨパワー！', 'ビール無敵！', 'パワーアップ！', '俺を止めるな！'],
   caughtFarMeters: 800, // これ以上走って捕まると caughtFar 寄りの台詞
 };
 

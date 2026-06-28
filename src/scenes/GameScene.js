@@ -39,8 +39,8 @@ export default class GameScene extends Phaser.Scene {
     this.load.image('chaser_caught', `${base}chaser_obasan/caught.png`);
     for (const k of ['cone','barrier','bicycle','trash','vending','boxes','sign','tape'])
       this.load.image(`obs_${k}`, `${base}obstacles_street/${k}.png`);
-    for (const k of ['veggie','water','aojiru','dumbbell'])
-      this.load.image(`item_${k}`, `${base}items/${k}.png`);
+    for (const k of ['karaage','ramen','mayo','beer'])
+      this.load.image(`item_${k}`, `assets/sprites/extracted_v2/food_items/${k}.png`);
     this.load.image('bg_sidewalk', 'assets/sprites/background/sidewalk.png');
   }
 
@@ -546,14 +546,17 @@ export default class GameScene extends Phaser.Scene {
       ? FLOOR_Y - (ITEM_SPAWN.floatYMin + Math.random() * (ITEM_SPAWN.floatYMax - ITEM_SPAWN.floatYMin))
       : FLOOR_Y - def.h / 2 - 4;
     const tk = def.textureKey;
-    let rect;
-    // アイテムは1.5倍表示
-    const iVisW = Math.round(def.w * 1.5);
-    const iVisH = Math.round(def.h * 1.5);
+    let rect, iVisW, iVisH;
+    const TARGET_ITEM_H = 52; // 全アイテム統一高さ（自然なアスペクト比で幅は可変）
     if (tk && this.textures.exists(tk)) {
       rect = this.add.image(x, cy, tk).setDepth(4);
-      rect.setDisplaySize(iVisW, iVisH);
+      const sc = TARGET_ITEM_H / rect.height;
+      rect.setScale(sc);
+      iVisH = TARGET_ITEM_H;
+      iVisW = Math.round(rect.width * sc);
     } else {
+      iVisW = Math.round(def.w * 1.5);
+      iVisH = Math.round(def.h * 1.5);
       rect = this.add.rectangle(x, cy, iVisW, iVisH, def.color).setDepth(4);
     }
     // 黄金グロー（アイテムを障害物と明確に区別）
@@ -749,11 +752,11 @@ export default class GameScene extends Phaser.Scene {
     let rect, visW, visH;
     if (tk && this.textures.exists(tk)) {
       rect = this.add.image(x, visualBottom, tk).setOrigin(0.5, 1).setDepth(4);
-      // 自然なアスペクト比を保ちつつ適切な高さに拡大
+      // 自然なアスペクト比を保ちつつ適切な高さに縮小表示（大きすぎると背景に浮く）
       // clearance障害物（テープ等）はポール込みの全体高さを表示
       const targetH = def.onGround
-        ? Math.min(def.h * 2, 96)
-        : Math.min((def.clearance + def.h) * 1.5, 110);
+        ? Math.min(def.h * 1.4, 72)
+        : Math.min((def.clearance + def.h) * 1.0, 80);
       const scale = targetH / rect.height;
       rect.setScale(scale);
       visH = Math.round(rect.height * scale);

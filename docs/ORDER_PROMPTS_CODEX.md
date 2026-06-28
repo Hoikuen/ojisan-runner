@@ -209,22 +209,54 @@ All 4 icons in ONE horizontal row, same cell height, evenly spaced. Output as a 
 
 ---
 
-# R5：背景（歩道・シティ）
+# R5：背景（空＋遠景シルエット）★ゲームのパーラックス専用設計
+
+> **⚠️ 旧R5（歩道シティ）との違い：**
+> 旧版は下半分に歩道・電柱・建物を描いたため、ゲーム側の地面（FLOOR_Y）と速度差で二重に見えた。
+> 新版は**地面・歩道を一切描かない**。下端まで空か遠景のみ。
 
 **保存先：** `~/Developer/games/ojisan-runner/public/assets/sprites/background/sidewalk.png`
-（不透明・緑背景不要）
+（同名で上書き。不透明・緑背景不要）
+
+> **Codexへの渡し方：**
+> ```
+> 作業リポジトリは ~/Developer/games/ojisan-runner（他ゲームに保存しないこと）。
+> R5（背景イラスト）を1枚生成してください。
+> 保存先: ~/Developer/games/ojisan-runner/public/assets/sprites/background/sidewalk.png
+> フルパスでファイル名を報告。
+> ```
 
 ```
-A side-scrolling 2D game background: a Japanese city sidewalk, daytime.
-Wide concrete sidewalk in the foreground, office buildings and shops in the background,
-powerlines above, blue sky. Some street trees or poles. Sunny and cheerful but slightly hectic.
-The mood is "a salaryman running desperately through an ordinary Japanese city street."
-NO characters, no people, no text, no logos.
-Retro 16-bit pixel-art game background, flat colors, bold outlines, horizontal layout designed
-to tile/repeat left-to-right seamlessly.
-Keep the middle-and-lower band (where the character runs) relatively clear and low in detail
-so the running character stands out.
-Size 1536x512 (wide and short — runner game aspect). Fully opaque, no transparency.
+A wide seamlessly-tileable side-scrolling 2D game background for a Japanese city endless runner.
+Size: 1536 × 512 pixels. Fully opaque (no transparency, no green chroma key needed).
+
+════ CRITICAL LAYOUT RULES ════
+• TOP 65% (y=0 to y=332): bright blue daytime sky with fluffy white pixel-art clouds.
+  A few clouds at different sizes and heights drifting across. Sun visible in upper-right area.
+  Sky can have a subtle gradient from deep blue at top to lighter near the horizon.
+• MIDDLE 25% (y=332 to y=460): distant Japanese city silhouettes — simplified skyscrapers,
+  office towers, and a few rooftop water tanks. These are pure SILHOUETTES: flat dark navy/dark
+  grey shapes with no window details, no signs, no poles. The skyline should be varied in
+  height but all shapes are simplified block silhouettes, like ink stamps.
+• BOTTOM 10% (y=460 to y=512): continue the silhouette or fade to a slightly lighter horizon.
+  NO sidewalk. NO ground. NO floor tiles. NO road markings. NO telephone poles. NO trees
+  in the foreground. NO close-up objects of any kind. The game renders its own ground line.
+
+════ STYLE ════
+Retro 16-bit pixel-art, flat cel shading, bold pixel outlines where needed.
+The palette should feel like a clear Tokyo afternoon: bright sky blues, warm sun yellows,
+cool dark navy building silhouettes.
+
+════ TILING ════
+Left edge and right edge must match seamlessly for infinite horizontal looping.
+The clouds and skyline should NOT have obvious repeat patterns within one 1536px width.
+Place cloud clusters asymmetrically (e.g., large group left-center, small group right).
+
+════ FORBIDDEN ════
+No ground, no sidewalk, no road, no floor tiles.
+No telephone poles or powerlines.
+No close foreground trees or fences.
+No people, no characters, no text, no logos, no UI elements.
 ```
 
 ---

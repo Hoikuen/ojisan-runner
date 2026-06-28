@@ -627,7 +627,7 @@ export default class GameScene extends Phaser.Scene {
     }
 
     // 背景スクロール
-    this.bg.tilePositionX += this.speed * 0.35 * dt; // 背景はパーラックス(遅め)で目の疲れを軽減
+    this.bg.tilePositionX += this.speed * 0.4 * dt; // 背景パーラックス（遠景シルエット想定）
 
     // 障害物スポーン
     this.spawnCountdown -= this.speed * dt;

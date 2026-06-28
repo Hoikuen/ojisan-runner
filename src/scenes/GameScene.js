@@ -550,12 +550,12 @@ export default class GameScene extends Phaser.Scene {
     const def = ITEMS[ITEM_KEYS[(Math.random() * ITEM_KEYS.length) | 0]];
     const x = GAME_W + 50;
     const float = Math.random() < ITEM_SPAWN.floatChance;
+    const TARGET_ITEM_H = 52;
     const cy = float
       ? FLOOR_Y - (ITEM_SPAWN.floatYMin + Math.random() * (ITEM_SPAWN.floatYMax - ITEM_SPAWN.floatYMin))
-      : FLOOR_Y - def.h / 2 - 4;
+      : FLOOR_Y - TARGET_ITEM_H / 2 - 8; // 視覚高さ基準＋bob(±7px)分マージン
     const tk = def.textureKey;
-    let rect, iVisW, iVisH;
-    const TARGET_ITEM_H = 52; // 全アイテム統一高さ（自然なアスペクト比で幅は可変）
+    let rect, iVisW, iVisH; // 全アイテム統一高さ（自然なアスペクト比で幅は可変）
     if (tk && this.textures.exists(tk)) {
       rect = this.add.image(x, cy, tk).setDepth(4);
       const sc = TARGET_ITEM_H / rect.height;

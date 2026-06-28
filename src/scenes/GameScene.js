@@ -18,6 +18,13 @@ const ITEM_KEYS = Object.keys(ITEMS);
 const pick = (arr) => arr[(Math.random() * arr.length) | 0];
 const hexColor = (n) => '#' + n.toString(16).padStart(6, '0');
 
+// ステージ定義：走行距離(m)で切り替わる
+const STAGES = [
+  { minMeters: 0,    bgKey: 'bg_sidewalk', chaserPrefix: 'chaser_obasan', label: null },
+  { minMeters: 500,  bgKey: 'bg_evening',  chaserPrefix: 'chaser_doctor', label: 'STAGE 2\nお医者さんが追ってくる！' },
+  { minMeters: 1200, bgKey: 'bg_night',    chaserPrefix: 'chaser_wife',   label: 'STAGE 3\n奥さんが追ってくる！' },
+];
+
 // 手動物理のエンドレスランナー（チェイス型）。
 // - プレイヤーはX固定。垂直は vy 変数 + 重力で手動制御（Arcade不使用＝床めり込み等の罠を回避）。
 // - 障害物=誘惑は左へ流れる矩形。当たり判定は手動AABB。当たると即終了ではなく「つまずき」で
@@ -35,13 +42,17 @@ export default class GameScene extends Phaser.Scene {
     this.load.image('player_duck',   `${base}player_ojisan/duck.png`);
     this.load.image('player_hurt_1', `${base}player_ojisan/hurt_1.png`);
     this.load.image('player_hurt_2', `${base}player_ojisan/hurt_2.png`);
-    for (let i = 1; i <= 4; i++) this.load.image(`chaser_run_${i}`, `${base}chaser_obasan/run_${i}.png`);
-    this.load.image('chaser_caught', `${base}chaser_obasan/caught.png`);
+    for (const prefix of ['chaser_obasan', 'chaser_doctor', 'chaser_wife']) {
+      for (let i = 1; i <= 4; i++) this.load.image(`${prefix}_run_${i}`, `${base}${prefix}/run_${i}.png`);
+      this.load.image(`${prefix}_caught`, `${base}${prefix}/caught.png`);
+    }
     for (const k of ['cone','barrier','bicycle','trash','vending','boxes','sign','tape'])
       this.load.image(`obs_${k}`, `${base}obstacles_street/${k}.png`);
     for (const k of ['karaage','ramen','mayo','beer'])
       this.load.image(`item_${k}`, `assets/sprites/extracted_v2/food_items/${k}.png`);
     this.load.image('bg_sidewalk', 'assets/sprites/background/sidewalk.png');
+    this.load.image('bg_evening',  'assets/sprites/background/evening.png');
+    this.load.image('bg_night',    'assets/sprites/background/night.png');
   }
 
   create() {
@@ -107,8 +118,9 @@ export default class GameScene extends Phaser.Scene {
     this.invulnIsPower = false; // true=ヘルシー無敵 / false=つまずき無敵
     this.turboBonus = 0; // パワーアイテム中の速度ボーナス(px/s)
     this.speedLines = []; // ターボ中のスピードライン
+    this.chaserPrefix = 'chaser_obasan';
     this.chaser = this.add
-      .image(0, FLOOR_Y, 'chaser_run_1')
+      .image(0, FLOOR_Y, 'chaser_obasan_run_1')
       .setOrigin(0.5, 1)
       .setDepth(4);
     const CHASER_DISPLAY_H = 110;
@@ -116,6 +128,8 @@ export default class GameScene extends Phaser.Scene {
     this.chaser.setScale(this.chaserBaseScale);
     this.chaserAnimFrame = 0;
     this.chaserAnimTimer = 0;
+    this.currentStage = 0;
+    this.stageTransitioning = false;
 
     // ── 進行 ────────────────────────────────────────────────────
     this.speed = TUNING.startSpeed;
@@ -297,7 +311,7 @@ export default class GameScene extends Phaser.Scene {
     if (this.chaserAnimTimer <= 0) {
       this.chaserAnimFrame = (this.chaserAnimFrame + 1) % 4;
       this.chaserAnimTimer = 0.10;
-      this.chaser.setTexture(`chaser_run_${this.chaserAnimFrame + 1}`);
+      this.chaser.setTexture(`${this.chaserPrefix}_run_${this.chaserAnimFrame + 1}`);
       this.chaserBaseScale = CHASER.h / this.chaser.height;
     }
     // 近いほど少し大きく
@@ -323,6 +337,51 @@ export default class GameScene extends Phaser.Scene {
     this.gaugeFill.displayWidth = Math.max(1, this.gaugeW * ratio);
     this.gaugeFill.fillColor =
       ratio > 0.5 ? COLORS.gaugeGood : ratio > 0.28 ? COLORS.gaugeWarn : COLORS.gaugeBad;
+  }
+
+  triggerStageTransition(newStage) {
+    this.stageTransitioning = true;
+    const st = STAGES[newStage];
+    this.cameras.main.fadeOut(350, 0, 0, 0);
+    this.cameras.main.once('camerafadeoutcomplete', () => {
+      // 背景テクスチャ切り替え
+      this.bg.setTexture(st.bgKey);
+      // 追手キャラ切り替え
+      this.chaserPrefix = st.chaserPrefix;
+      this.chaser.setTexture(`${this.chaserPrefix}_run_1`);
+      this.chaserAnimFrame = 0;
+      this.chaserBaseScale = CHASER.h / this.chaser.height;
+      this.chaser.setScale(this.chaserBaseScale);
+      this.currentStage = newStage;
+      this.cameras.main.fadeIn(350, 0, 0, 0);
+      this.cameras.main.once('camerafadeincomplete', () => {
+        this.stageTransitioning = false;
+      });
+      // ステージ開幕バナー
+      if (st.label) {
+        const banner = this.add
+          .text(GAME_W / 2, GAME_H / 2, st.label, {
+            fontFamily: 'sans-serif',
+            fontSize: '28px',
+            color: '#ffffff',
+            fontStyle: 'bold',
+            align: 'center',
+            stroke: '#000000',
+            strokeThickness: 4,
+          })
+          .setOrigin(0.5)
+          .setDepth(28)
+          .setAlpha(0);
+        this.tweens.add({
+          targets: banner,
+          alpha: { from: 0, to: 1 },
+          duration: 280,
+          yoyo: true,
+          hold: 1400,
+          onComplete: () => banner.destroy(),
+        });
+      }
+    });
   }
 
   updatePlayerSprite(dt, squash, inv, powered) {
@@ -599,6 +658,12 @@ export default class GameScene extends Phaser.Scene {
     const meters = Math.floor(this.distance * TUNING.metersPerPx);
     this.scoreText.setText(`${meters} m`);
 
+    // ステージ切り替えチェック
+    const targetStage = STAGES.reduce((acc, s, i) => meters >= s.minMeters ? i : acc, 0);
+    if (targetStage !== this.currentStage && !this.stageTransitioning) {
+      this.triggerStageTransition(targetStage);
+    }
+
     // 追手の接近：常時 + 距離に比例して加速（＝最終的にはミスなしでも捕まる）
     const gainRate = CHASER.baseGain + meters * CHASER.gainPerMeter;
     this.changeGap(-gainRate * dt);
@@ -805,7 +870,7 @@ export default class GameScene extends Phaser.Scene {
     this.player.setTexture('player_hurt_1');
     this.player.setScale(this._playerBaseScale);
     this.player.clearTint();
-    this.chaser.setTexture('chaser_caught');
+    this.chaser.setTexture(`${this.chaserPrefix}_caught`);
     this.chaser.setScale(CHASER.h / this.chaser.height);
     this.chaser.clearTint();
 

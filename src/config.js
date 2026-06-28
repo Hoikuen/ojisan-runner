@@ -68,27 +68,27 @@ export const CHASER = {
 // 障害物＝誘惑（高カロリー）。onGround=地面置き(ジャンプで避ける) /
 // clearance 指定=浮いてる(スライドで潜る)。w,h はプレースホルダーの矩形サイズ。
 export const OBSTACLES = {
-  ramen: { label: 'ラーメン', w: 40, h: 40, color: 0xe24b4b, onGround: true },
-  beer: { label: 'ビール', w: 26, h: 64, color: 0xe2a93b, onGround: true },
-  karaage: { label: '唐揚げ', w: 54, h: 34, color: 0xc8742a, onGround: true },
+  ramen:    { label: 'ラーメン',    w: 40, h: 40, color: 0xe24b4b, onGround: true, textureKey: 'obs_ramen' },
+  beer:     { label: 'ビール',      w: 26, h: 64, color: 0xe2a93b, onGround: true, textureKey: 'obs_beer' },
+  karaage:  { label: '唐揚げ',      w: 54, h: 34, color: 0xc8742a, onGround: true, textureKey: 'obs_karaage' },
   // 浮遊（看板/自販機の上など）→ 立ったままだと当たる。伏せて潜る。
   // clearance=床から障害物の下端までの隙間。duckH(32) < clearance(40) < standH(62) で
   // 「立つと当たる／伏せると通れる」を保証。
-  vending: { label: '自販機の看板', w: 60, h: 30, color: 0x4b78e2, clearance: 40 },
+  vending:  { label: '自販機の看板', w: 60, h: 30, color: 0x4b78e2, clearance: 40, textureKey: 'obs_vending' },
   // 追加誘惑
-  chocolate: { label: 'チョコレート', w: 44, h: 28, color: 0x5c2e0a, onGround: true },
-  oil:       { label: 'サラダ油',     w: 24, h: 52, color: 0xd4b800, onGround: true },
-  butter:    { label: 'バター',       w: 42, h: 24, color: 0xf0d050, onGround: true },
-  mayo:      { label: 'マヨネーズ',   w: 28, h: 56, color: 0xf5f0d0, onGround: true },
+  chocolate: { label: 'チョコレート', w: 44, h: 28, color: 0x5c2e0a, onGround: true, textureKey: 'obs_chocolate' },
+  oil:       { label: 'サラダ油',     w: 24, h: 52, color: 0xd4b800, onGround: true, textureKey: 'obs_oil' },
+  butter:    { label: 'バター',       w: 42, h: 24, color: 0xf0d050, onGround: true, textureKey: 'obs_butter' },
+  mayo:      { label: 'マヨネーズ',   w: 28, h: 56, color: 0xf5f0d0, onGround: true, textureKey: 'obs_mayo' },
 };
 
 // ヘルシーアイテム（=逃げる助け）。誘惑の逆。拾うと効果。
 // kind:'gap' = 追手を引き離す(gap回復) / kind:'power' = 一定時間無敵(誘惑を素通り)。
 export const ITEMS = {
-  veggie: { label: '野菜', w: 30, h: 30, color: 0x5cb85c, kind: 'gap', gap: 30 },
-  water: { label: '水', w: 26, h: 34, color: 0x39a8e6, kind: 'gap', gap: 22 },
-  aojiru: { label: '青汁', w: 28, h: 36, color: 0x2e8b3d, kind: 'power', ms: 2200 },
-  dumbbell: { label: 'ダンベル', w: 44, h: 18, color: 0x9aa0a6, kind: 'power', ms: 2600 },
+  veggie:   { label: '野菜',    w: 30, h: 30, color: 0x5cb85c, kind: 'gap',   gap: 30,  textureKey: 'item_veggie' },
+  water:    { label: '水',      w: 26, h: 34, color: 0x39a8e6, kind: 'gap',   gap: 22,  textureKey: 'item_water' },
+  aojiru:   { label: '青汁',    w: 28, h: 36, color: 0x2e8b3d, kind: 'power', ms: 2200, textureKey: 'item_aojiru' },
+  dumbbell: { label: 'ダンベル', w: 44, h: 18, color: 0x9aa0a6, kind: 'power', ms: 2600, textureKey: 'item_dumbbell' },
 };
 
 // アイテム出現。障害物とは別カデンツ（少し稀）。floatChance=空中(ジャンプで取る)割合。

@@ -28,6 +28,21 @@ export default class GameScene extends Phaser.Scene {
     super('GameScene');
   }
 
+  preload() {
+    const base = 'assets/sprites/extracted_v2/';
+    for (let i = 1; i <= 4; i++) this.load.image(`player_run_${i}`, `${base}player_ojisan/run_${i}.png`);
+    this.load.image('player_jump',   `${base}player_ojisan/jump.png`);
+    this.load.image('player_duck',   `${base}player_ojisan/duck.png`);
+    this.load.image('player_hurt_1', `${base}player_ojisan/hurt_1.png`);
+    this.load.image('player_hurt_2', `${base}player_ojisan/hurt_2.png`);
+    for (let i = 1; i <= 4; i++) this.load.image(`chaser_run_${i}`, `${base}chaser_obasan/run_${i}.png`);
+    this.load.image('chaser_caught', `${base}chaser_obasan/caught.png`);
+    for (const k of ['ramen','beer','karaage','vending','chocolate','oil','butter','mayo'])
+      this.load.image(`obs_${k}`, `${base}obstacles/${k}.png`);
+    for (const k of ['veggie','water','aojiru','dumbbell'])
+      this.load.image(`item_${k}`, `${base}items/${k}.png`);
+  }
+
   create() {
     this.state = 'running';
 
@@ -62,13 +77,16 @@ export default class GameScene extends Phaser.Scene {
     }
     this.stripeSpan = GAME_W + stripeGap;
 
-    // ── プレイヤー（おじさん＝四角）──────────────────────────────
+    // ── プレイヤー（おじさんスプライト）─────────────────────────
     this.player = this.add
-      .rectangle(TUNING.playerX, FLOOR_Y, TUNING.playerW, TUNING.standH, COLORS.player)
-      .setOrigin(0.5, 1) // 足元基準
+      .image(TUNING.playerX, FLOOR_Y, 'player_run_1')
+      .setOrigin(0.5, 1)
       .setDepth(5);
-    // 顔っぽい目印（向きが分かるように前方に小さな目）
-    this.eye = this.add.rectangle(0, 0, 7, 7, 0x222222).setDepth(6);
+    this._playerBaseScale = TUNING.standH / this.player.height;
+    this.player.setScale(this._playerBaseScale);
+    // アニメ状態
+    this.animFrame = 0;
+    this.animTimer = 0;
 
     this.vy = 0;
     this.onGround = true;
@@ -93,11 +111,13 @@ export default class GameScene extends Phaser.Scene {
     this.invuln = 0; // 無敵の残り(ms)。つまずき後 or ヘルシー無敵で共有
     this.invulnIsPower = false; // true=ヘルシー無敵 / false=つまずき無敵
     this.chaser = this.add
-      .rectangle(0, FLOOR_Y, CHASER.w, CHASER.h, COLORS.chaser)
+      .image(0, FLOOR_Y, 'chaser_run_1')
       .setOrigin(0.5, 1)
       .setDepth(4);
-    this.chaserEyeL = this.add.rectangle(0, 0, 8, 8, COLORS.chaserEye).setDepth(5);
-    this.chaserEyeR = this.add.rectangle(0, 0, 8, 8, COLORS.chaserEye).setDepth(5);
+    this.chaserBaseScale = CHASER.h / this.chaser.height;
+    this.chaser.setScale(this.chaserBaseScale);
+    this.chaserAnimFrame = 0;
+    this.chaserAnimTimer = 0;
 
     // ── 進行 ────────────────────────────────────────────────────
     this.speed = TUNING.startSpeed;
@@ -262,13 +282,25 @@ export default class GameScene extends Phaser.Scene {
     const x = TUNING.playerX - this.gap;
     this.chaser.x = x;
     const close = this.gap < CHASER.warnGap;
-    // 近いほど少し大きく/赤く見せる
     const t = Phaser.Math.Clamp(1 - this.gap / CHASER.gapMax, 0, 1);
-    this.chaser.scaleX = 1 + t * 0.12;
-    this.chaser.fillColor = close ? 0xc0354f : COLORS.chaser;
-    const top = this.chaser.y - CHASER.h + 22;
-    this.chaserEyeL.setPosition(x - 11, top);
-    this.chaserEyeR.setPosition(x + 11, top);
+
+    // ランアニメ
+    this.chaserAnimTimer -= dt;
+    if (this.chaserAnimTimer <= 0) {
+      this.chaserAnimFrame = (this.chaserAnimFrame + 1) % 4;
+      this.chaserAnimTimer = 0.10;
+      this.chaser.setTexture(`chaser_run_${this.chaserAnimFrame + 1}`);
+      this.chaserBaseScale = CHASER.h / this.chaser.height;
+    }
+    // 近いほど少し大きく
+    this.chaser.scaleY = this.chaserBaseScale;
+    this.chaser.scaleX = this.chaserBaseScale * (1 + t * 0.12);
+    // 接近でティント（赤み）
+    if (close) {
+      this.chaser.setTint(0xff8888);
+    } else {
+      this.chaser.clearTint();
+    }
 
     // 警告（近づくと点滅表示）
     if (close) {
@@ -283,6 +315,51 @@ export default class GameScene extends Phaser.Scene {
     this.gaugeFill.displayWidth = Math.max(1, this.gaugeW * ratio);
     this.gaugeFill.fillColor =
       ratio > 0.5 ? COLORS.gaugeGood : ratio > 0.28 ? COLORS.gaugeWarn : COLORS.gaugeBad;
+  }
+
+  updatePlayerSprite(dt, squash, inv, powered) {
+    const ducking = this.ducking && this.onGround;
+    const airborne = !this.onGround;
+
+    // テクスチャキー決定
+    let key;
+    if (airborne) {
+      key = 'player_jump';
+    } else if (ducking) {
+      key = 'player_duck';
+    } else if (inv && !powered) {
+      // つまずき：hurt_1/hurt_2 を交互
+      key = Math.floor(this.time.now / 120) % 2 === 0 ? 'player_hurt_1' : 'player_hurt_2';
+    } else {
+      // ラン：4コマループ
+      this.animTimer -= dt;
+      if (this.animTimer <= 0) {
+        this.animFrame = (this.animFrame + 1) % 4;
+        this.animTimer = 0.10;
+      }
+      key = `player_run_${this.animFrame + 1}`;
+    }
+
+    if (this.player.texture.key !== key) {
+      this.player.setTexture(key);
+      // 全テクスチャが同じ高さ(400px)なのでスケールは一定
+    }
+
+    // 着地スクワッシュ：scaleXだけ拡大
+    this.player.scaleY = this._playerBaseScale;
+    this.player.scaleX = this._playerBaseScale * (1 + (ducking || airborne ? 0 : 0.18 * squash));
+
+    // ヘルシー無敵ティント
+    if (powered) {
+      this.player.setTint(COLORS.playerPower);
+    } else {
+      this.player.clearTint();
+    }
+
+    // 無敵中の点滅
+    this.player.setAlpha(
+      inv && Math.floor(this.time.now / 80) % 2 === 0 ? (powered ? 0.7 : 0.45) : 1
+    );
   }
 
   // ── オーディオ（アセット不要のWebAudio合成SFX）──────────────────
@@ -466,7 +543,14 @@ export default class GameScene extends Phaser.Scene {
     const cy = float
       ? FLOOR_Y - (ITEM_SPAWN.floatYMin + Math.random() * (ITEM_SPAWN.floatYMax - ITEM_SPAWN.floatYMin))
       : FLOOR_Y - def.h / 2 - 4;
-    const rect = this.add.rectangle(x, cy, def.w, def.h, def.color).setDepth(4);
+    const tk = def.textureKey;
+    let rect;
+    if (tk && this.textures.exists(tk)) {
+      rect = this.add.image(x, cy, tk).setDepth(4);
+      rect.setDisplaySize(def.w, def.h);
+    } else {
+      rect = this.add.rectangle(x, cy, def.w, def.h, def.color).setDepth(4);
+    }
     this.items.push({ x, y: cy, w: def.w, h: def.h, def, rect });
   }
 
@@ -521,30 +605,14 @@ export default class GameScene extends Phaser.Scene {
     this.prevOnGround = this.onGround;
     if (this.landSquash > 0) this.landSquash -= dt;
 
-    // 伏せ（地上のみ有効。空中は立ち姿で当たり判定フル）
+    // 伏せ当たり判定（スプライトの見た目はupdatePlayerSpriteで制御）
     const targetH = this.ducking && this.onGround ? TUNING.duckH : TUNING.standH;
     this.curH = targetH;
-    this.player.displayHeight = targetH; // origin(0.5,1) で足元固定のまま縮む（scaleY）
-    // 着地スクワッシュ（scaleXはduck/displayHeightと干渉しない）
     const sq = this.landSquash > 0 ? Math.max(0, this.landSquash) / 0.16 : 0;
-    this.player.scaleX = 1 + 0.28 * sq;
-    // 無敵中の見た目：ヘルシー=シアン点滅 / つまずき=赤点滅
     const inv = this.invuln > 0;
     const powered = inv && this.invulnIsPower;
-    this.player.fillColor = powered
-      ? COLORS.playerPower
-      : inv
-        ? COLORS.playerHurt
-        : targetH === TUNING.duckH
-          ? COLORS.playerDuck
-          : COLORS.player;
-    this.player.setAlpha(inv && Math.floor(this.time.now / 80) % 2 === 0 ? (powered ? 0.7 : 0.45) : 1);
-    // 目を前方上部に追従
-    this.eye.x = this.player.x + TUNING.playerW / 2 - 9;
-    this.eye.y = this.player.y - this.curH + 12;
-    // 必死度：追手が近いほど目を見開き、汗を多く飛ばす
+    this.updatePlayerSprite(dt, sq, inv, powered);
     const panic = this.gap < CHASER.warnGap;
-    this.eye.setScale(panic ? 1.7 : 1);
     this.sweatTimer -= dt;
     if (this.sweatTimer <= 0) {
       this.spawnParticles(this.player.x - 8, this.player.y - this.curH + 6, COLORS.sweat, 1, true);
@@ -666,10 +734,14 @@ export default class GameScene extends Phaser.Scene {
     }
     const top = bottom - def.h;
 
-    const rect = this.add
-      .rectangle(x, bottom, def.w, def.h, def.color)
-      .setOrigin(0.5, 1)
-      .setDepth(4);
+    const tk = def.textureKey;
+    let rect;
+    if (tk && this.textures.exists(tk)) {
+      rect = this.add.image(x, bottom, tk).setOrigin(0.5, 1).setDepth(4);
+      rect.setDisplaySize(def.w, def.h);
+    } else {
+      rect = this.add.rectangle(x, bottom, def.w, def.h, def.color).setOrigin(0.5, 1).setDepth(4);
+    }
 
     this.obstacles.push({ x, w: def.w, h: def.h, top, bottom, rect });
   }
@@ -680,10 +752,17 @@ export default class GameScene extends Phaser.Scene {
     this.hideHint();
     this.warnText.setAlpha(0);
     this.player.setAlpha(1);
-    this.player.scaleX = 1;
     this.cameras.main.shake(180, 0.012);
     this.cameras.main.flash(120, 255, 120, 120);
     this.sfxCaught();
+
+    // プレイヤー → hurt ポーズ、追手 → caught ポーズ
+    this.player.setTexture('player_hurt_1');
+    this.player.setScale(this._playerBaseScale);
+    this.player.clearTint();
+    this.chaser.setTexture('chaser_caught');
+    this.chaser.setScale(CHASER.h / this.chaser.height);
+    this.chaser.clearTint();
 
     if (meters > this.best) {
       this.best = meters;

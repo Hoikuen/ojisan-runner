@@ -183,25 +183,35 @@ export default class GameScene extends Phaser.Scene {
 
   setupInput() {
     // タップ＝ジャンプ、下スワイプ（40px超）＝しゃがむ
+    // ptActive: 現セッションで pointerdown が来て初めて true。リスタート後の指残りで
+    // 誤って duck/jump が発動しないよう、pointerdown 前は一切無視する。
     let ptStartY = 0;
     let ptDucked = false;
+    let ptActive = false;
 
     this.input.on('pointerdown', (p) => {
       this.initAudio();
       ptStartY = p.y;
       ptDucked = false;
+      ptActive = true;
       if (this.state === 'gameover') { this.restartGame(); return; }
     });
     this.input.on('pointermove', (p) => {
-      if (this.state !== 'running' || ptDucked) return;
+      if (!ptActive || this.state !== 'running' || ptDucked) return;
       if (p.y - ptStartY > 40) { ptDucked = true; this.startDuck(); }
     });
     this.input.on('pointerup', () => {
+      if (!ptActive) return;
       if (this.state === 'running' && !ptDucked) this.jump();
       this.stopDuck();
       ptDucked = false;
+      ptActive = false;
     });
-    this.input.on('pointerupoutside', () => { this.stopDuck(); ptDucked = false; });
+    this.input.on('pointerupoutside', () => {
+      this.stopDuck();
+      ptDucked = false;
+      ptActive = false;
+    });
 
     // キーボード
     const kb = this.input.keyboard;

@@ -272,7 +272,6 @@ export default class GameScene extends Phaser.Scene {
     this.invulnIsPower = false;
     o.hit = true;
     o.rect.destroy();
-    o.glow.destroy();
     this.obstacles.splice(idx, 1);
     this.cameras.main.shake(120, 0.008);
     this.cameras.main.flash(90, 255, 90, 90);
@@ -559,9 +558,7 @@ export default class GameScene extends Phaser.Scene {
       iVisH = Math.round(def.h * 1.5);
       rect = this.add.rectangle(x, cy, iVisW, iVisH, def.color).setDepth(4);
     }
-    // 黄金グロー（アイテムを障害物と明確に区別）
-    const aura = this.add.rectangle(x, cy, iVisW + 16, iVisH + 16, 0xffd700, 0.55).setDepth(3);
-    this.items.push({ x, y: cy, baseY: cy, w: def.w, h: def.h, def, rect, aura });
+    this.items.push({ x, y: cy, baseY: cy, w: def.w, h: def.h, def, rect });
   }
 
   collectItem(it) {
@@ -577,7 +574,6 @@ export default class GameScene extends Phaser.Scene {
       this.spawnFloatText(it.x, it.y - 16, pick(FLAVOR.pickupPower), hexColor(COLORS.playerPower));
     }
     this.spawnParticles(it.x, it.y, def.color, 8, true);
-    it.aura.destroy();
     it.rect.destroy();
   }
 
@@ -631,7 +627,7 @@ export default class GameScene extends Phaser.Scene {
     }
 
     // 背景スクロール
-    this.bg.tilePositionX += this.speed * dt;
+    this.bg.tilePositionX += this.speed * 0.35 * dt; // 背景はパーラックス(遅め)で目の疲れを軽減
 
     // 障害物スポーン
     this.spawnCountdown -= this.speed * dt;
@@ -659,9 +655,6 @@ export default class GameScene extends Phaser.Scene {
       const o = this.obstacles[i];
       o.x -= this.speed * dt;
       o.rect.x = o.x;
-      o.glow.x = o.x;
-      o.glow.setAlpha(0.35 + 0.35 * Math.abs(Math.sin(this.time.now / 320)));
-
       // 当たり判定（手動AABB）
       const oLeft = o.x - o.w / 2;
       const oRight = o.x + o.w / 2;
@@ -685,7 +678,6 @@ export default class GameScene extends Phaser.Scene {
       // 画面外で破棄
       if (o.x < -80) {
         o.rect.destroy();
-        o.glow.destroy();
         this.obstacles.splice(i, 1);
       }
     }
@@ -699,9 +691,6 @@ export default class GameScene extends Phaser.Scene {
       it.y = it.baseY + bob;
       it.rect.x = it.x;
       it.rect.y = it.y;
-      it.aura.x = it.x;
-      it.aura.y = it.y;
-      it.aura.setAlpha(0.35 + 0.35 * Math.abs(Math.sin(this.time.now / 480)));
       const iL = it.x - it.w / 2;
       const iR = it.x + it.w / 2;
       const iT = it.y - it.h / 2;
@@ -713,7 +702,6 @@ export default class GameScene extends Phaser.Scene {
       }
       if (it.x < -60) {
         it.rect.destroy();
-        it.aura.destroy();
         this.items.splice(i, 1);
       }
     }
@@ -766,13 +754,7 @@ export default class GameScene extends Phaser.Scene {
       visW = Math.round(def.w * (visH / def.h));
       rect = this.add.rectangle(x, visualBottom, visW, visH, def.color).setOrigin(0.5, 1).setDepth(4);
     }
-    // 赤いハザードグロー（障害物の視認性向上）
-    const glow = this.add
-      .rectangle(x, visualBottom, visW + 18, visH + 18, 0xff2200, 0.55)
-      .setOrigin(0.5, 1)
-      .setDepth(3);
-
-    this.obstacles.push({ x, w: def.w, h: def.h, top: hitTop, bottom: hitBottom, rect, glow });
+    this.obstacles.push({ x, w: def.w, h: def.h, top: hitTop, bottom: hitBottom, rect });
   }
 
   gameOver(meters) {

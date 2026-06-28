@@ -1,0 +1,13 @@
+{
+  "name": "おじさんランナー",
+  "short_name": "おじさん走",
+  "description": "健康診断から逃げるおじさんのエンドレスランナー",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#1a1d24",
+  "theme_color": "#bfe3ff",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

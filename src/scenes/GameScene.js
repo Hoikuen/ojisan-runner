@@ -41,6 +41,7 @@ export default class GameScene extends Phaser.Scene {
       this.load.image(`obs_${k}`, `${base}obstacles/${k}.png`);
     for (const k of ['veggie','water','aojiru','dumbbell'])
       this.load.image(`item_${k}`, `${base}items/${k}.png`);
+    this.load.image('bg_sidewalk', 'assets/sprites/background/sidewalk.png');
   }
 
   create() {
@@ -49,33 +50,20 @@ export default class GameScene extends Phaser.Scene {
     // ベスト距離（localStorage）
     this.best = Number(localStorage.getItem(BEST_KEY) || 0);
 
-    // ── 背景（雲）────────────────────────────────────────────────
-    this.clouds = [];
-    for (let i = 0; i < 4; i++) {
-      const c = this.add
-        .ellipse(80 + i * 220, 70 + (i % 2) * 40, 110, 46, COLORS.cloud, 0.85)
-        .setDepth(0);
-      this.clouds.push(c);
-    }
+    // ── 背景（スクロールtileSprite）──────────────────────────────
+    // sidewalk.png は 1536×512。ゲーム高さに合わせてスケール
+    const bgScale = GAME_H / 512;
+    this.bg = this.add
+      .tileSprite(0, 0, GAME_W, GAME_H, 'bg_sidewalk')
+      .setOrigin(0, 0)
+      .setDepth(-1);
+    this.bg.tileScaleX = bgScale;
+    this.bg.tileScaleY = bgScale;
 
-    // ── 地面 ────────────────────────────────────────────────────
+    // ── 地面ライン（走る基準線：6px）──────────────────────────────
     this.add
       .rectangle(GAME_W / 2, FLOOR_Y, GAME_W, 6, COLORS.groundTop)
       .setDepth(2);
-    this.add
-      .rectangle(GAME_W / 2, (FLOOR_Y + GAME_H) / 2 + 3, GAME_W, GAME_H - FLOOR_Y, COLORS.ground)
-      .setDepth(1);
-
-    // 地面のスクロール縞（スピード感）
-    this.stripes = [];
-    const stripeGap = 70;
-    for (let x = 0; x < GAME_W + stripeGap; x += stripeGap) {
-      const s = this.add
-        .rectangle(x, FLOOR_Y + 18, 34, 10, COLORS.stripe)
-        .setDepth(2);
-      this.stripes.push(s);
-    }
-    this.stripeSpan = GAME_W + stripeGap;
 
     // ── プレイヤー（おじさんスプライト）─────────────────────────
     this.player = this.add
@@ -620,14 +608,7 @@ export default class GameScene extends Phaser.Scene {
     }
 
     // 背景スクロール
-    for (const c of this.clouds) {
-      c.x -= this.speed * 0.15 * dt;
-      if (c.x < -70) c.x += GAME_W + 140;
-    }
-    for (const s of this.stripes) {
-      s.x -= this.speed * dt;
-      if (s.x < -34) s.x += this.stripeSpan;
-    }
+    this.bg.tilePositionX += this.speed * dt;
 
     // 障害物スポーン
     this.spawnCountdown -= this.speed * dt;
